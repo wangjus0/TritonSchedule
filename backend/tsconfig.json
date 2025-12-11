@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "types": [
+      "node"
+    ],
+    "module": "nodenext",
+    "lib": [
+      "ESNext"
+    ],
+    "strict": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "moduleDetection": "force"
+  }
+}
