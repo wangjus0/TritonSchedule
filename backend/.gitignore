@@ -2,3 +2,6 @@
 .env
 .env.local
 .env.*local
+
+# Yarn snapshots
+yarn.lock
