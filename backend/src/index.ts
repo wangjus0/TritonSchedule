@@ -10,6 +10,7 @@ app.listen(PORT, () => {
   console.log(`Listening on port: ${PORT}`);
 });
 
+// for inserting items into data base boilerplate
 async function main() {
 
   const db = await connectDB();
@@ -36,5 +37,3 @@ async function testAPI(){
   }
 
 }
-
-testAPI();

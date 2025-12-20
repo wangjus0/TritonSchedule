@@ -574,7 +574,6 @@ a {
 .calendar-grid {
   display: grid;
   grid-template-columns: 100px repeat(5, 1fr);
-  grid-template-rows: 50px repeat(13, 60px);
   min-width: 800px;
   border: 1px solid #c6cbd4;
   border-radius: 4px;

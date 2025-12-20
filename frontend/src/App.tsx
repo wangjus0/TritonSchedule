@@ -162,10 +162,12 @@ function calculateClassPosition(
   startHour: number,
   endHour: number,
   dayIndex: number,
+  minHour: number,
 ): { gridRow: number; gridRowSpan: number; gridColumn: number } {
-  const startRow = Math.floor((startHour - 8) * 2) + 2 // +2 for header row
-  const endRow = Math.ceil((endHour - 8) * 2) + 2
-  const rowSpan = endRow - startRow
+  // 30-minute increments → 2 rows per hour; header rows offset by 2
+  const startRow = Math.floor((startHour - minHour) * 2) + 2
+  const endRow = Math.ceil((endHour - minHour) * 2) + 2
+  const rowSpan = Math.max(1, endRow - startRow)
   
   return {
     gridRow: startRow,
@@ -174,23 +176,47 @@ function calculateClassPosition(
   }
 }
 
-const timeSlots = [
-  '8:00 AM',
-  '9:00 AM',
-  '10:00 AM',
-  '11:00 AM',
-  '12:00 PM',
-  '1:00 PM',
-  '2:00 PM',
-  '3:00 PM',
-  '4:00 PM',
-  '5:00 PM',
-  '6:00 PM',
-  '7:00 PM',
-  '8:00 PM',
-]
-
 const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+
+type TimeSlot = {
+  label: string
+  key: string
+}
+
+// Generate time slots dynamically based on scheduled classes (30-minute increments)
+function generateTimeSlots(scheduledClasses: ScheduledClass[]): { slots: TimeSlot[], minHour: number } {
+  // Default range: 8 AM to 8 PM
+  let minHour = 8
+  let maxHour = 20
+
+  if (scheduledClasses.length > 0) {
+    const allStartHours = scheduledClasses.map(cls => cls.startHour)
+    const allEndHours = scheduledClasses.map(cls => cls.endHour)
+    minHour = Math.floor(Math.min(...allStartHours, minHour))
+    maxHour = Math.ceil(Math.max(...allEndHours, maxHour))
+
+    // Add padding: start 1 hour earlier, end 1 hour later
+    minHour = Math.max(0, minHour - 1)
+    maxHour = Math.min(24, maxHour + 1)
+  }
+
+  const slots: TimeSlot[] = []
+  for (let hour = minHour; hour <= maxHour; hour++) {
+    for (const minute of [0, 30]) {
+      const period = hour >= 12 ? 'PM' : 'AM'
+      const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
+      // Only show label for hour markers (minute === 0), leave 30-minute slots empty
+      const label = minute === 0 ? `${displayHour}:00 ${period}` : ''
+
+      slots.push({
+        label,
+        key: `${hour}-${minute}`,
+      })
+    }
+  }
+
+  return { slots, minHour }
+}
 
 // Generate colors for different courses
 const courseColors: Record<string, string> = {}
@@ -214,26 +240,142 @@ function getCourseColor(course: string): string {
   return courseColors[course]
 }
 
+// Type definitions for API response
+type ApiClass = {
+  _id?: string
+  name: string
+  sections: {
+    RestrictionCode: string
+    CourseNumber: string
+    SectionID: string
+    MeetingType: string
+    Section: string
+    Days: string
+    Time: string
+    Location: string
+    Instructor: string
+    AvaliableSeats: string
+    Limit: string
+    searchText: string
+  }[]
+}
+
+// Transform API response (Class[]) to ClassEntry[]
+function transformApiDataToClassEntries(classes: ApiClass[]): ClassEntry[] {
+  const classEntries: ClassEntry[] = []
+  let entryId = 1
+
+  if (!Array.isArray(classes)) {
+    console.error('transformApiDataToClassEntries: Expected array but got:', typeof classes, classes)
+    return []
+  }
+
+  classes.forEach((classItem, classIndex) => {
+    // Check if classItem has sections
+    if (!classItem.sections || !Array.isArray(classItem.sections)) {
+      console.warn(`Class at index ${classIndex} has no sections array:`, classItem)
+      return
+    }
+
+    if (classItem.sections.length === 0) {
+      console.warn(`Class at index ${classIndex} has empty sections array:`, classItem.name)
+    }
+
+    classItem.sections.forEach((section, sectionIndex) => {
+      try {
+        // Parse location (format: "BUILDING ROOM" or just "TBA")
+        const location = section.Location?.trim() || 'TBA'
+        const locationParts = location.split(/\s+/)
+        const building = locationParts.length > 0 && locationParts[0] !== '' ? locationParts[0] : 'TBA'
+        const room = locationParts.length > 1 ? locationParts.slice(1).join(' ') : 'TBA'
+
+        // Extract course code from CourseNumber (e.g., "CSE 11" or "MATH 20A")
+        const course = section.CourseNumber || classItem.name.split(' ').slice(0, 2).join(' ')
+
+        classEntries.push({
+          id: `${classItem._id || classIndex}-${section.SectionID || sectionIndex}`,
+          course: course || 'Unknown',
+          section: section.Section || section.SectionID || 'Unknown',
+          type: section.MeetingType || 'Unknown',
+          days: section.Days || 'TBA',
+          time: section.Time || 'TBA',
+          building: building,
+          room: room,
+          instructor: section.Instructor || 'TBA',
+          available: `${section.AvaliableSeats || '0'}/${section.Limit || '0'}`
+        })
+        entryId++
+      } catch (err) {
+        console.error(`Error transforming section ${sectionIndex} of class ${classIndex}:`, err, section)
+      }
+    })
+  })
+
+  return classEntries
+}
+
 function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [availableClasses, setAvailableClasses] = useState<ClassEntry[]>(initialClasses)
   const [scheduledClasses, setScheduledClasses] = useState<ScheduledClass[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSearch = () => {
-    // Filter classes based on search query
+  const handleSearch = async () => {
+    // If search is empty, reset to initial classes
     if (!searchQuery.trim()) {
       setAvailableClasses(initialClasses)
+      setError(null)
       return
     }
-    
-    const query = searchQuery.toLowerCase()
-    const filtered = initialClasses.filter(
-      (cls) =>
-        cls.course.toLowerCase().includes(query) ||
-        cls.instructor.toLowerCase().includes(query) ||
-        cls.building.toLowerCase().includes(query)
-    )
-    setAvailableClasses(filtered)
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const url = `http://localhost:3000/api/courses?search=${encodeURIComponent(searchQuery)}&term=WI26`
+      console.log('Fetching from URL:', url)
+      
+      const response = await fetch(url)
+
+      console.log('Response status:', response.status, response.statusText)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Error response:', errorData)
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('API response data:', data)
+      console.log('Number of classes received:', Array.isArray(data) ? data.length : 'Not an array')
+      
+      // Check if data is an array
+      if (!Array.isArray(data)) {
+        console.error('Expected array but got:', typeof data, data)
+        throw new Error('Invalid response format from server')
+      }
+      
+      // Transform API response to ClassEntry format
+      const transformedClasses = transformApiDataToClassEntries(data)
+      console.log('Transformed classes:', transformedClasses)
+      console.log('Number of transformed entries:', transformedClasses.length)
+      
+      setAvailableClasses(transformedClasses)
+
+      if (transformedClasses.length === 0) {
+        setError('No courses found. Try a different search term.')
+      } else {
+        setError(null) // Clear any previous errors
+      }
+    } catch (err) {
+      console.error('Error fetching courses:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to search courses. Please try again.'
+      setError(errorMessage)
+      setAvailableClasses([])
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleAddClass = (classEntry: ClassEntry) => {
@@ -299,6 +441,11 @@ function App() {
         <section className="results-section">
           <div className="results-container">
             <h2 className="results-title">Search Results</h2>
+            {isLoading && <p style={{ padding: '1rem', textAlign: 'center' }}>Loading...</p>}
+            {error && <p style={{ padding: '1rem', color: 'red', textAlign: 'center' }}>{error}</p>}
+            {!isLoading && !error && availableClasses.length === 0 && (
+              <p style={{ padding: '1rem', textAlign: 'center' }}>No courses found. Try searching for a course.</p>
+            )}
             <div className="results-table-wrapper">
               <table className="classes-table">
                 <thead>
@@ -360,63 +507,92 @@ function App() {
           <div className="calendar-container">
             <h2 className="calendar-title">Weekly Schedule</h2>
             <div className="calendar-wrapper">
-              <div className="calendar-grid">
-                {/* Time header (empty top-left cell) */}
-                <div className="time-header"></div>
-                
-                {/* Day headers */}
-                {weekdays.map((day) => (
-                  <div key={day} className="day-header">
-                    {day}
-                  </div>
-                ))}
+              {(() => {
+                const { slots: timeSlots, minHour } = generateTimeSlots(scheduledClasses)
+                const numRows = timeSlots.length
 
-                {/* Time slots and day cells */}
-                {timeSlots.map((time) => (
-                  <React.Fragment key={time}>
-                    {/* Time slot */}
-                    <div className="time-slot">{time}</div>
+                return (
+                  <div 
+                    className="calendar-grid"
+                    style={{
+                      gridTemplateRows: `50px repeat(${numRows}, 30px)`
+                    }}
+                  >
+                    {/* Time header (empty top-left cell) - explicitly positioned */}
+                    <div className="time-header" style={{ gridRow: 1, gridColumn: 1 }}></div>
                     
-                    {/* Day cells for this time slot */}
-                    {weekdays.map((day) => (
-                      <div key={`${day}-${time}`} className="day-cell"></div>
-                    ))}
-                  </React.Fragment>
-                ))}
-
-                {/* Class blocks - rendered as direct children of calendar-grid */}
-                {scheduledClasses.map((cls) => {
-                  return cls.dayIndices.map((dayIndex) => {
-                    const pos = calculateClassPosition(
-                      cls.startHour,
-                      cls.endHour,
-                      dayIndex
-                    )
-                    return (
-                      <div
-                        key={`${cls.id}-${dayIndex}`}
-                        className="class-block"
-                        style={{
-                          gridRow: `${pos.gridRow} / span ${pos.gridRowSpan}`,
-                          gridColumn: pos.gridColumn,
-                          backgroundColor: getCourseColor(cls.course),
-                        }}
-                        title={`${cls.course} ${cls.section} - ${cls.time} - ${cls.building} ${cls.room}`}
+                    {/* Day headers - explicitly positioned in row 1 */}
+                    {weekdays.map((day, index) => (
+                      <div 
+                        key={day} 
+                        className="day-header"
+                        style={{ gridRow: 1, gridColumn: index + 2 }}
                       >
-                        <div className="class-block-content">
-                          <div className="class-block-title">
-                            {cls.course} {cls.section}
-                          </div>
-                          <div className="class-block-details">
-                            {cls.time} • {cls.building} {cls.room}
-                          </div>
-                          <div className="class-block-type">{cls.type}</div>
-                        </div>
+                        {day}
                       </div>
-                    )
-                  })
-                })}
-              </div>
+                    ))}
+
+                    {/* Time slots and day cells - explicitly positioned */}
+                    {timeSlots.map((slot, slotIndex) => {
+                      const row = slotIndex + 2 // +2 because row 1 is header
+                      return (
+                        <React.Fragment key={slot.key}>
+                          {/* Time slot - explicitly positioned */}
+                          <div 
+                            className="time-slot"
+                            style={{ gridRow: row, gridColumn: 1 }}
+                          >
+                            {slot.label}
+                          </div>
+                          
+                          {/* Day cells for this time slot - explicitly positioned */}
+                          {weekdays.map((day, dayIndex) => (
+                            <div 
+                              key={`${day}-${slot.key}`} 
+                              className="day-cell"
+                              style={{ gridRow: row, gridColumn: dayIndex + 2 }}
+                            ></div>
+                          ))}
+                        </React.Fragment>
+                      )
+                    })}
+
+                    {/* Class blocks - rendered as direct children of calendar-grid */}
+                    {scheduledClasses.map((cls) => {
+                      return cls.dayIndices.map((dayIndex) => {
+                        const pos = calculateClassPosition(
+                          cls.startHour,
+                          cls.endHour,
+                          dayIndex,
+                          minHour
+                        )
+                        return (
+                          <div
+                            key={`${cls.id}-${dayIndex}`}
+                            className="class-block"
+                            style={{
+                              gridRow: `${pos.gridRow} / span ${pos.gridRowSpan}`,
+                              gridColumn: pos.gridColumn,
+                              backgroundColor: getCourseColor(cls.course),
+                            }}
+                            title={`${cls.course} ${cls.section} - ${cls.time} - ${cls.building} ${cls.room}`}
+                          >
+                            <div className="class-block-content">
+                              <div className="class-block-title">
+                                {cls.course} {cls.section}
+                              </div>
+                              <div className="class-block-details">
+                                {cls.time} • {cls.building} {cls.room}
+                              </div>
+                              <div className="class-block-type">{cls.type}</div>
+                            </div>
+                          </div>
+                        )
+                      })
+                    })}
+                  </div>
+                )
+              })()}
             </div>
           </div>
         </section>
