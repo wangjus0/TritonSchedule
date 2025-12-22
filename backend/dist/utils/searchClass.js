@@ -1,5 +1,11 @@
 import * as cheerio from "cheerio";
 import { extractCookies } from "./extractCookies.js";
+const MEETING_TYPES = {
+    "LE": "lectures",
+    "DI": "discussions",
+    "MI": "midterms",
+    "FI": "final",
+};
 export async function searchClass(search, term) {
     // Search page endpoint
     const searchUrl = "https://act.ucsd.edu/scheduleOfClasses/scheduleOfClassesStudent.htm";
@@ -16,8 +22,8 @@ export async function searchClass(search, term) {
         courses: search,
         tabNum: "tabs-crs",
     });
-    // Request
-    const resp = await fetch(resultUrl, {
+    // Creating the initial request to load classes    
+    await fetch(resultUrl, {
         method: "POST",
         headers: {
             Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -41,8 +47,6 @@ export async function searchClass(search, term) {
     });
     let page = 1;
     let hasMore = true;
-    let results = [];
-    const url = "https://act.ucsd.edu/scheduleOfClasses/scheduleOfClassesStudentResult.htm";
     let scrapedClasses = [];
     let currentCourse = null;
     while (hasMore) {
@@ -93,13 +97,18 @@ export async function searchClass(search, term) {
                 if (className.length > 0) {
                     currentCourse = {
                         name: combinedTitle,
-                        sections: [],
+                        teacher: "",
+                        lectures: [],
+                        discussions: [],
+                        midterms: [],
+                        final: null,
                     };
                 }
                 else {
                     currentCourse = null;
                 }
             }
+            // Handle course sections
             if (row.find(".brdr").length > 0) {
                 // Only push if currentCourse exists
                 if (currentCourse !== null) {
@@ -113,12 +122,54 @@ export async function searchClass(search, term) {
                         Days: sectionElements.eq(5).text().trim(),
                         Time: sectionElements.eq(6).text().trim(),
                         Location: sectionElements.eq(7).text().trim(),
-                        Instructor: sectionElements.eq(9).text().trim(),
                         AvaliableSeats: sectionElements.eq(10).text().trim(),
                         Limit: sectionElements.eq(11).text().trim(),
                         searchText: "placeholder",
                     };
-                    currentCourse.sections.push(course);
+                    const meetingType = course.MeetingType;
+                    const bucket = MEETING_TYPES[meetingType];
+                    // To filter sections into distinct categories
+                    if (bucket) {
+                        if (course.SectionID === "FI") {
+                            currentCourse.final = course;
+                        }
+                        else if (course.SectionID === "MI") {
+                            currentCourse.midterms.push(course);
+                        }
+                        else if (bucket !== "final") {
+                            currentCourse[bucket].push(course);
+                        }
+                    }
+                    // To set teacher field in Class obj if empty
+                    if (currentCourse.teacher === "") {
+                        currentCourse.teacher = sectionElements.eq(9).text().trim();
+                    }
+                }
+            }
+            // Handle finals and midterms
+            if (row.find(".brdr").length > 0 && row.length == 10) {
+                // Only push if currentCourse exists
+                if (currentCourse !== null) {
+                    const sectionElements = row.children("td");
+                    const course = {
+                        RestrictionCode: "",
+                        CourseNumber: "",
+                        SectionID: "",
+                        MeetingType: sectionElements.eq(2).text().trim(),
+                        Section: "",
+                        Days: sectionElements.eq(3).text().trim(),
+                        Time: sectionElements.eq(5).text().trim(),
+                        Location: sectionElements.eq(6).text().trim() + " "
+                            + sectionElements.eq(7).text().trim(),
+                        AvaliableSeats: "",
+                        Limit: "",
+                        searchText: "placeholder",
+                    };
+                    const meetingType = course.MeetingType;
+                    const bucket = MEETING_TYPES[meetingType];
+                    if (bucket && bucket !== "final") {
+                        currentCourse.final = course;
+                    }
                 }
             }
         });
@@ -134,5 +185,7 @@ export async function searchClass(search, term) {
         page++;
     }
     console.log("Successfully scraped classes");
+    console.log(scrapedClasses);
     return scrapedClasses;
 }
+searchClass("math 10a", "WI26");

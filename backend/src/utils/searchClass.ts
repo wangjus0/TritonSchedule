@@ -1,7 +1,15 @@
 import * as cheerio from "cheerio";
 import { extractCookies } from "./extractCookies.js";
 import type { Class } from "../models/Class.js";
-import type { Course } from "../models/Course.js";
+
+type MEETING_BUCKET = "lectures" | "discussions" | "midterms" | "final";
+
+const MEETING_TYPES: Record<string, MEETING_BUCKET> = {
+  "LE": "lectures",
+  "DI": "discussions",
+  "MI": "midterms",
+  "FI": "final",
+}
 
 export async function searchClass(search: string, term: string) {
   // Search page endpoint
@@ -27,8 +35,8 @@ export async function searchClass(search: string, term: string) {
     tabNum: "tabs-crs",
   });
 
-  // Request
-  const resp = await fetch(resultUrl, {
+  // Creating the initial request to load classes    
+  await fetch(resultUrl, {
     method: "POST",
     headers: {
       Accept:
@@ -55,11 +63,6 @@ export async function searchClass(search: string, term: string) {
 
   let page: number = 1;
   let hasMore: boolean = true;
-  let results: Course[] = [];
-
-  const url =
-    "https://act.ucsd.edu/scheduleOfClasses/scheduleOfClassesStudentResult.htm";
-
   let scrapedClasses: Class[] = [];
   let currentCourse: Class | null = null;
 
@@ -92,7 +95,6 @@ export async function searchClass(search: string, term: string) {
     });
 
     const html = await res.text();
-
     const $ = cheerio.load(html);
     const classes = $("tr") ?? "";
 
@@ -123,7 +125,11 @@ export async function searchClass(search: string, term: string) {
         if (className.length > 0){
           currentCourse = {
             name: combinedTitle,
-            sections: [],
+            teacher: "",
+            lectures: [],
+            discussions: [],
+            midterms: [],
+            final: null,
           }
         }else{
           currentCourse = null;
@@ -131,7 +137,9 @@ export async function searchClass(search: string, term: string) {
 
       }
 
+      // Handle course sections
       if (row.find(".brdr").length > 0) {
+
         // Only push if currentCourse exists
         if (currentCourse !== null) {
           const sectionElements = row.children("td");
@@ -144,13 +152,65 @@ export async function searchClass(search: string, term: string) {
             Days: sectionElements.eq(5).text().trim(),
             Time: sectionElements.eq(6).text().trim(),
             Location: sectionElements.eq(7).text().trim(),
-            Instructor: sectionElements.eq(9).text().trim(),
             AvaliableSeats: sectionElements.eq(10).text().trim(),
             Limit: sectionElements.eq(11).text().trim(),
             searchText: "placeholder",
           };
-          currentCourse.sections.push(course);
+          const meetingType = course.MeetingType;
+          const bucket = MEETING_TYPES[meetingType];
+
+          // FIX: THIS IS NOT WORKING AS INTENDED
+          // To filter sections into distinct categories
+          if (bucket){
+            if(course.SectionID === "FI"){
+              currentCourse.final = course;
+            }else if(course.SectionID === "MI"){
+              currentCourse.midterms.push(course);
+            }else if(bucket !== "final"){
+              currentCourse[bucket].push(course);
+            }
+          }
+
+          // To set teacher field in Class obj if empty
+          if (currentCourse.teacher === ""){
+            currentCourse.teacher = sectionElements.eq(9).text().trim();
+          }
+
         }
+
+      }
+
+      // Handle finals and midterms
+      if (row.find(".brdr").length > 0 && row.length == 10){
+
+        // Only push if currentCourse exists
+        if (currentCourse !== null){
+
+          const sectionElements = row.children("td");
+          const course = {
+            RestrictionCode: "",
+            CourseNumber: "",
+            SectionID: "",
+            MeetingType: sectionElements.eq(2).text().trim(),
+            Section: "",
+            Days: sectionElements.eq(3).text().trim(),
+            Time: sectionElements.eq(5).text().trim(),
+            Location: sectionElements.eq(6).text().trim() + " " 
+              + sectionElements.eq(7).text().trim(),
+            AvaliableSeats: "",
+            Limit: "",
+            searchText: "placeholder",
+          };
+
+          const meetingType = course.MeetingType;
+          const bucket = MEETING_TYPES[meetingType];
+
+          if (bucket && bucket !== "final"){
+            currentCourse.final = course;
+          }
+
+        }
+
       }
 
     });
@@ -170,6 +230,9 @@ export async function searchClass(search: string, term: string) {
   }
 
   console.log("Successfully scraped classes");
+  console.log(scrapedClasses);
   return scrapedClasses;
 
 }
+
+searchClass("math 10a", "WI26");

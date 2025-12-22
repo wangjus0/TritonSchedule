@@ -15,6 +15,8 @@ app.get("/", (req, res) => {
     const resource = path.resolve(process.cwd(), "..", "frontend", "index.html");
     res.sendFile(resource);
 });
+// Move this route into a course routing specific file 
+// and remove the function and create a course controller function for it
 app.get("/api/courses", async (req, res) => {
     try {
         const { search, term } = req.query;

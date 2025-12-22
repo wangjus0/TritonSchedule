@@ -6,3 +6,5 @@
 # Yarn snapshots
 yarn.lock
 
+# Dependencies
+node_modules
