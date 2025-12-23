@@ -5,4 +5,4 @@
 node_modules
 
 # Config
-package.json
+package-lock.json
