@@ -1,4 +1,4 @@
-export type Course =  {
+export type Course = {
   RestrictionCode: string;
   CourseNumber: string;
   SectionID: string;
@@ -9,5 +9,5 @@ export type Course =  {
   Location: string;
   AvaliableSeats: string;
   Limit: string;
-  searchText: string;
 };
+

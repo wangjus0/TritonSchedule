@@ -5,8 +5,12 @@ import { connectDB } from "../db/mongo.js";
 export const app = express();
 // Enable CORS for all routes
 app.use(cors({
-    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"],
-    credentials: true
+    origin: [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:3000",
+    ],
+    credentials: true,
 }));
 // Middleware for parsing JSON
 app.use(express.json());
@@ -15,7 +19,7 @@ app.get("/", (req, res) => {
     const resource = path.resolve(process.cwd(), "..", "frontend", "index.html");
     res.sendFile(resource);
 });
-// Move this route into a course routing specific file 
+// Move this route into a course routing specific file
 // and remove the function and create a course controller function for it
 app.get("/api/courses", async (req, res) => {
     try {
@@ -25,7 +29,7 @@ app.get("/api/courses", async (req, res) => {
             return res.status(400).json({
                 error: "Missing required query parameters",
                 message: "Both 'search' and 'term' query parameters are required",
-                example: "/api/courses?search=cse11&term=WI26"
+                example: "/api/courses?search=cse11&term=WI26",
             });
         }
         const db = await connectDB();
@@ -37,14 +41,14 @@ app.get("/api/courses", async (req, res) => {
             .toArray();
         console.log(`Found ${content.length} courses matching "${searchQuery}"`);
         // Serialize MongoDB documents to plain objects to avoid circular references
-        const serializedContent = content.map(doc => ({
+        const serializedContent = content.map((doc) => ({
             _id: doc._id?.toString(),
             name: doc.name,
-            teacher: doc.teacher || '',
-            lectures: doc.lectures || [],
+            teacher: doc.teacher || "",
+            lecture: doc.lectures || [],
             discussions: doc.discussions || [],
             midterms: doc.midterms || [],
-            final: doc.final || null
+            final: doc.final || null,
         }));
         // Return the results
         res.json(serializedContent);
@@ -53,7 +57,7 @@ app.get("/api/courses", async (req, res) => {
         console.error("Error searching for courses:", error);
         res.status(500).json({
             error: "Internal server error",
-            message: error instanceof Error ? error.message : "An unknown error occurred"
+            message: error instanceof Error ? error.message : "An unknown error occurred",
         });
     }
 });

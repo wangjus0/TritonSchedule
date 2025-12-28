@@ -2,10 +2,10 @@ import * as cheerio from "cheerio";
 import { extractCookies } from "./extractCookies.js";
 import type { Class } from "../models/Class.js";
 
-type MEETING_BUCKET = "lectures" | "discussions" | "midterms" | "final";
+type MEETING_BUCKET = "lecture" | "discussions" | "midterms" | "final";
 
 const MEETING_TYPES: Record<string, MEETING_BUCKET> = {
-  LE: "lectures",
+  LE: "lecture",
   DI: "discussions",
   MI: "midterms",
   FI: "final",
@@ -124,8 +124,9 @@ export async function searchClass(search: string, term: string) {
         if (className.length > 0) {
           currentCourse = {
             name: combinedTitle,
+            term: term,
             teacher: "",
-            lectures: [],
+            lecture: null,
             discussions: [],
             midterms: [],
             final: null,
@@ -151,14 +152,17 @@ export async function searchClass(search: string, term: string) {
             Location: sectionElements.eq(7).text().trim(),
             AvaliableSeats: sectionElements.eq(10).text().trim(),
             Limit: sectionElements.eq(11).text().trim(),
-            searchText: "placeholder",
           };
           const meetingType = course.MeetingType;
           const bucket = MEETING_TYPES[meetingType];
 
           // Push the course to the appropriate bucket
-          if (bucket && bucket !== "final") {
-            currentCourse[bucket]?.push(course);
+          if (bucket) {
+            if (bucket === "midterms") {
+              currentCourse[bucket].push(course);
+            } else if (bucket === "lecture") {
+              currentCourse.lecture = course;
+            }
           }
 
           // To set teacher field in Class obj if empty
@@ -217,6 +221,5 @@ export async function searchClass(search: string, term: string) {
   }
 
   console.log("Successfully scraped classes");
-  console.log(scrapedClasses);
   return scrapedClasses;
 }
