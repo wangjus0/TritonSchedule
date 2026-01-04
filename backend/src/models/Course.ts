@@ -1,4 +1,5 @@
 export type Course = {
+  Type: string;
   RestrictionCode: string;
   CourseNumber: string;
   SectionID: string;
@@ -10,4 +11,3 @@ export type Course = {
   AvaliableSeats: string;
   Limit: string;
 };
-

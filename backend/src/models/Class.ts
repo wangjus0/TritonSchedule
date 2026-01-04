@@ -1,11 +1,12 @@
 import type { Course } from "./Course.js";
 
 export type Class = {
-  name: string;
-  term: string;
-  teacher: string;
-  lecture: Course | null;
-  discussions: Course[];
-  midterms: Course[];
-  final: Course | null;
+  Type: string;
+  Name: string;
+  Term: string;
+  Teacher: string;
+  Lecture: Course | null;
+  Discussions: Course[];
+  Midterms: Course[];
+  Final: Course | null;
 };

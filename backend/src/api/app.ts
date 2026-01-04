@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import cors from "cors";
-import { connectDB } from "../db/mongo.js";
+import { connectToDB } from "../db/connectToDB.js";
 
 export const app = express();
 
@@ -41,7 +41,7 @@ app.get("/api/courses", async (req, res) => {
       });
     }
 
-    const db = await connectDB();
+    const db = await connectToDB();
     const courses = db.collection("courses");
     const searchQuery = String(search);
 

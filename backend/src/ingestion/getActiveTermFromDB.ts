@@ -1,8 +1,8 @@
-import { connectDB } from "../db/mongo.js";
+import { connectToDB } from "../db/connectToDB.js";
 import type { term } from "../models/Term.js";
 
 export async function getActiveTermFromDB() {
-  const db = await connectDB();
+  const db = await connectToDB();
 
   const collectionExists = await db.listCollections().toArray();
   const exist = collectionExists.length > 0;

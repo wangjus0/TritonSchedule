@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import cors from "cors";
-import { connectDB } from "../db/mongo.js";
+import { connectToDB } from "../db/connectToDB.js";
 export const app = express();
 // Enable CORS for all routes
 app.use(cors({
@@ -32,7 +32,7 @@ app.get("/api/courses", async (req, res) => {
                 example: "/api/courses?search=cse11&term=WI26",
             });
         }
-        const db = await connectDB();
+        const db = await connectToDB();
         const courses = db.collection("courses");
         const searchQuery = String(search);
         console.log(`Searching for courses with query: "${searchQuery}" and term: "${term}"`);

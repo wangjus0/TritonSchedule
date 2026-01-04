@@ -1,4 +1,5 @@
 export type term = {
-  term: string;
-  isActive: boolean;
+  Type: string;
+  Term: string;
+  IsActive: boolean;
 };

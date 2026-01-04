@@ -1,10 +1,10 @@
 import * as cheerio from "cheerio";
 import { extractCookies } from "./extractCookies.js";
 const MEETING_TYPES = {
-    LE: "lecture",
-    DI: "discussions",
-    MI: "midterms",
-    FI: "final",
+    LE: "Lecture",
+    DI: "Discussions",
+    MI: "Midterms",
+    FI: "Final",
 };
 export async function searchClass(search, term) {
     // Search page endpoint
@@ -96,13 +96,14 @@ export async function searchClass(search, term) {
                 // Create a new course
                 if (className.length > 0) {
                     currentCourse = {
-                        name: combinedTitle,
-                        term: term,
-                        teacher: "",
-                        lecture: null,
-                        discussions: [],
-                        midterms: [],
-                        final: null,
+                        Type: "Course",
+                        Name: combinedTitle,
+                        Term: term,
+                        Teacher: "",
+                        Lecture: null,
+                        Discussions: [],
+                        Midterms: [],
+                        Final: null,
                     };
                 }
                 else {
@@ -115,6 +116,7 @@ export async function searchClass(search, term) {
                 if (currentCourse !== null) {
                     const sectionElements = row.children("td");
                     const course = {
+                        Type: "course",
                         RestrictionCode: sectionElements.eq(0).text().trim(),
                         CourseNumber: sectionElements.eq(1).text().trim(),
                         SectionID: sectionElements.eq(2).text().trim(),
@@ -130,16 +132,16 @@ export async function searchClass(search, term) {
                     const bucket = MEETING_TYPES[meetingType];
                     // Push the course to the appropriate bucket
                     if (bucket) {
-                        if (bucket === "midterms") {
+                        if (bucket === "Midterms") {
                             currentCourse[bucket].push(course);
                         }
-                        else if (bucket === "lecture") {
-                            currentCourse.lecture = course;
+                        else if (bucket === "Lecture") {
+                            currentCourse.Lecture = course;
                         }
                     }
                     // To set teacher field in Class obj if empty
-                    if (currentCourse.teacher === "") {
-                        currentCourse.teacher = sectionElements.eq(9).text().trim();
+                    if (currentCourse.Teacher === "") {
+                        currentCourse.Teacher = sectionElements.eq(9).text().trim();
                     }
                 }
             }
@@ -149,6 +151,7 @@ export async function searchClass(search, term) {
                 if (currentCourse !== null) {
                     const sectionElements = row.children("td");
                     const course = {
+                        Type: "course",
                         RestrictionCode: "",
                         CourseNumber: "",
                         SectionID: "",
@@ -165,11 +168,11 @@ export async function searchClass(search, term) {
                     };
                     const meetingType = course.MeetingType;
                     const bucket = MEETING_TYPES[meetingType];
-                    if (bucket && bucket === "final") {
-                        currentCourse.final = course;
+                    if (bucket && bucket === "Final") {
+                        currentCourse.Final = course;
                     }
                     else {
-                        currentCourse.midterms.push(course);
+                        currentCourse.Midterms.push(course);
                     }
                 }
             }
