@@ -19,3 +19,9 @@ async function main() {
     // release lock function down here
 }
 export {};
+// CHECK LIST (need to clean stuff from each function like prints):
+// - detectCurrentTerm() works
+// - getActiveTermFromDB() works
+// - createTerm() works
+// - markAllTermsInactive() works
+// - scrapeFullTerm() need to implement

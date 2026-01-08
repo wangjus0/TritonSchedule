@@ -1,16 +1,17 @@
 import { connectToDB } from "../db/connectToDB.js";
-import { searchClass } from "../utils/searchClass.js";
+import { searchSubject } from "../utils/searchSubject.js";
+import { Db } from "mongodb";
 import type { Class } from "../models/Course.js";
 
-export async function insertDB() {
-  const db = await connectToDB();
-  const courses = db.collection<Class>("courses");
-  const classes = await searchClass("math 10a", "WI26");
+export async function insertDB(
+  db: Db,
+  content: Class[],
+  collection_name: string,
+) {
+  const courses = db.collection(collection_name);
 
-  await courses.insertMany(classes);
+  await courses.insertMany(content);
 
   console.log("Item inserted");
   return;
 }
-
-insertDB();

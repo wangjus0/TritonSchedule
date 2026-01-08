@@ -23,5 +23,5 @@ async function main() {
 // - detectCurrentTerm() works
 // - getActiveTermFromDB() works
 // - createTerm() works
-// - markAllTermsInactive() need to test
+// - markAllTermsInactive() works
 // - scrapeFullTerm() need to implement

@@ -6,7 +6,7 @@ const MEETING_TYPES = {
     MI: "Midterms",
     FI: "Final",
 };
-export async function searchClass(search, term) {
+export async function searchSubject(search, term) {
     // Search page endpoint
     const searchUrl = "https://act.ucsd.edu/scheduleOfClasses/scheduleOfClassesStudent.htm";
     // Result page endpoint
@@ -194,4 +194,3 @@ export async function searchClass(search, term) {
     console.log("Successfully scraped classes");
     return scrapedClasses;
 }
-searchClass("math 10a", "WI26");

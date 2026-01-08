@@ -11,7 +11,7 @@ const MEETING_TYPES: Record<string, MEETING_BUCKET> = {
   FI: "Final",
 };
 
-export async function searchClass(search: string, term: string) {
+export async function searchSubject(search: string, term: string) {
   // Search page endpoint
   const searchUrl =
     "https://act.ucsd.edu/scheduleOfClasses/scheduleOfClassesStudent.htm";
@@ -142,7 +142,6 @@ export async function searchClass(search: string, term: string) {
         if (currentCourse !== null) {
           const sectionElements = row.children("td");
           const course = {
-            Type: "course",
             RestrictionCode: sectionElements.eq(0).text().trim(),
             CourseNumber: sectionElements.eq(1).text().trim(),
             SectionID: sectionElements.eq(2).text().trim(),
@@ -151,7 +150,11 @@ export async function searchClass(search: string, term: string) {
             Days: sectionElements.eq(5).text().trim(),
             Time: sectionElements.eq(6).text().trim(),
             Location: sectionElements.eq(7).text().trim(),
-            AvaliableSeats: sectionElements.eq(10).text().trim(),
+            AvaliableSeats: sectionElements
+              .eq(10)
+              .text()
+              .trim()
+              .replace(/\s\s+/g, " "),
             Limit: sectionElements.eq(11).text().trim(),
           };
           const meetingType = course.MeetingType;
@@ -163,6 +166,8 @@ export async function searchClass(search: string, term: string) {
               currentCourse[bucket].push(course);
             } else if (bucket === "Lecture") {
               currentCourse.Lecture = course;
+            } else {
+              currentCourse.Discussions.push(course);
             }
           }
 
@@ -179,7 +184,6 @@ export async function searchClass(search: string, term: string) {
         if (currentCourse !== null) {
           const sectionElements = row.children("td");
           const course = {
-            Type: "course",
             RestrictionCode: "",
             CourseNumber: "",
             SectionID: "",
@@ -193,7 +197,6 @@ export async function searchClass(search: string, term: string) {
               sectionElements.eq(7).text().trim(),
             AvaliableSeats: "",
             Limit: "",
-            searchText: "placeholder",
           };
 
           const meetingType = course.MeetingType;
@@ -223,5 +226,6 @@ export async function searchClass(search: string, term: string) {
   }
 
   console.log("Successfully scraped classes");
+
   return scrapedClasses;
 }
