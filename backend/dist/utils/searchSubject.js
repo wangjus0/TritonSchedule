@@ -23,7 +23,7 @@ export async function searchSubject(search, term) {
         tabNum: "tabs-crs",
     });
     // Creating the initial request to load classes
-    await fetch(resultUrl, {
+    const test = await fetch(resultUrl, {
         method: "POST",
         headers: {
             Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -75,6 +75,10 @@ export async function searchSubject(search, term) {
         const html = await res.text();
         const $ = cheerio.load(html);
         const classes = $("tr") ?? "";
+        if ($(".msg alert").length > 0) {
+            hasMore = false;
+            break;
+        }
         // Scrape the classes and sections
         classes.each((_, el) => {
             const row = $(el);

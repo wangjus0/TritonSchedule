@@ -36,7 +36,7 @@ export async function searchSubject(search: string, term: string) {
   });
 
   // Creating the initial request to load classes
-  await fetch(resultUrl, {
+  const test = await fetch(resultUrl, {
     method: "POST",
     headers: {
       Accept:
@@ -97,6 +97,11 @@ export async function searchSubject(search: string, term: string) {
     const html = await res.text();
     const $ = cheerio.load(html);
     const classes = $("tr") ?? "";
+
+    if ($(".msg alert").length > 0) {
+      hasMore = false;
+      break;
+    }
 
     // Scrape the classes and sections
     classes.each((_, el) => {
