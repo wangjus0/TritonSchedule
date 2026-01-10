@@ -235,6 +235,10 @@ const UCSD_SUBJECT_CODES = [
   "WES",
 ];
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // TODO: Server-side by UCSD is rate limiting, so prolly have to use puppteer
 // to gather class data and cron by using the puppteer script
 export async function scrapeFullTerm(new_term: string) {
@@ -245,6 +249,7 @@ export async function scrapeFullTerm(new_term: string) {
   let db: Db = await connectToDB();
 
   for (const subject of UCSD_SUBJECT_CODES) {
+    await sleep(5000);
     let currentScraped: Class[] = await searchSubject(subject, new_term);
 
     if (currentScraped.length > 0) {

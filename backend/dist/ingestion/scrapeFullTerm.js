@@ -225,15 +225,18 @@ const UCSD_SUBJECT_CODES = [
     "WCWP",
     "WES",
 ];
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-// TODO: For some reason some of searches aren't working?
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+// TODO: Server-side by UCSD is rate limiting, so prolly have to use puppteer
+// to gather class data and cron by using the puppteer script
 export async function scrapeFullTerm(new_term) {
     // have a list with all the subjects
     // reuse search function for each subject
     // have some function to add to database
     let db = await connectToDB();
     for (const subject of UCSD_SUBJECT_CODES) {
-        await sleep(1000);
+        await sleep(5000);
         let currentScraped = await searchSubject(subject, new_term);
         if (currentScraped.length > 0) {
             await insertDB(db, currentScraped, "courses");
