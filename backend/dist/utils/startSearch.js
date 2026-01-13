@@ -1,4 +1,5 @@
 import puppeteer from "puppeteer";
+import { scrapeCurrentPage } from "./scrapeCurrentPage.js";
 export const SUBJECT_CODES = ["AIP ", "AAS "];
 // TODO:
 // - Use a single puppeteer page instance and mutate the page
@@ -11,7 +12,10 @@ export async function startSearch() {
     const page = await browser.newPage();
     await page.goto("https://act.ucsd.edu/scheduleOfClasses/scheduleOfClassesStudent.htm", { waitUntil: "networkidle2" });
     await page.waitForSelector("#selectedSubjects");
-    await page.select("select#selectedSubjects", "AIP ");
+    await page.select("select#selectedSubjects", "MATH");
     await page.click("#socFacSubmit");
+    await page.waitForSelector(".tbrdr");
+    await scrapeCurrentPage("WI26", page);
     return;
 }
+await startSearch();

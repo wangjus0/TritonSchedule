@@ -2,6 +2,7 @@ import puppeteer from "puppeteer";
 import type { Course } from "../models/Course.js";
 import type { Section } from "../models/Section.js";
 import type { Term } from "../models/Term.js";
+import { scrapeCurrentPage } from "./scrapeCurrentPage.js";
 
 export const SUBJECT_CODES = ["AIP ", "AAS "];
 
@@ -22,8 +23,14 @@ export async function startSearch() {
   );
 
   await page.waitForSelector("#selectedSubjects");
-  await page.select("select#selectedSubjects", "AIP ");
+  await page.select("select#selectedSubjects", "MATH");
   await page.click("#socFacSubmit");
+
+  await page.waitForSelector(".tbrdr");
+
+  await scrapeCurrentPage("WI26", page);
 
   return;
 }
+
+await startSearch();
