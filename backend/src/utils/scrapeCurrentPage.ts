@@ -1,9 +1,3 @@
-// WORKFLOW
-// Check current row element
-// - If is a header, scrape the class title and put it in the model
-// - If it is a class section scrape the contents and push it to the
-// model array
-
 import type { Page } from "puppeteer";
 import type { Course } from "../models/Course.js";
 import type { Section } from "../models/Section.js";
@@ -45,6 +39,7 @@ export async function scrapeCurrentPage(term: string, page: Page) {
         Term: term,
         Teacher: "",
         Lecture: null,
+        Rating: "",
         Discussions: [],
         Midterms: [],
         Final: null,
@@ -71,7 +66,11 @@ export async function scrapeCurrentPage(term: string, page: Page) {
     });
 
     if (current != null) {
-      if (nonTestBucket === "DI" || nonTestBucket === "LE") {
+      if (
+        nonTestBucket === "DI" ||
+        nonTestBucket === "LE" ||
+        nonTestBucket == "SE"
+      ) {
         if (current.Teacher.length <= 0) {
           current.Teacher = nestedRows[9];
         }
@@ -107,6 +106,16 @@ export async function scrapeCurrentPage(term: string, page: Page) {
             Location: nestedRows[6] + " " + nestedRows[7],
           };
         }
+      } else if (nonTestBucket === "IT") {
+        if (current.Teacher.length <= 0) {
+          current.Teacher = nestedRows[9];
+        }
+
+        current.Lecture = {
+          Days: nestedRows[5],
+          Time: nestedRows[5],
+          Location: nestedRows[5],
+        };
       }
     }
   }

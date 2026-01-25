@@ -131,6 +131,7 @@ export async function searchSubject(search: string, term: string) {
             Name: combinedTitle,
             Term: term,
             Teacher: "",
+            Rating: "",
             Lecture: null,
             Discussions: [],
             Midterms: [],

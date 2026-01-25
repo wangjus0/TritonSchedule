@@ -12,6 +12,5 @@ export async function insertDB(
 
   await courses.insertMany(content);
 
-  console.log("Item inserted");
   return;
 }
