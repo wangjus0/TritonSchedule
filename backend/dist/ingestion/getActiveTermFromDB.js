@@ -16,4 +16,3 @@ export async function getActiveTermFromDB() {
     console.log(currentTerm);
     return currentTerm;
 }
-getActiveTermFromDB();

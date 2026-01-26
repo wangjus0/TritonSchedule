@@ -103,6 +103,7 @@ export async function searchSubject(search, term) {
                         Name: combinedTitle,
                         Term: term,
                         Teacher: "",
+                        Rating: "",
                         Lecture: null,
                         Discussions: [],
                         Midterms: [],

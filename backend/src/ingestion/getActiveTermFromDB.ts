@@ -24,5 +24,3 @@ export async function getActiveTermFromDB() {
 
   return currentTerm;
 }
-
-getActiveTermFromDB();

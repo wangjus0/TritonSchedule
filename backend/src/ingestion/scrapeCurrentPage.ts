@@ -1,13 +1,15 @@
 import type { Page } from "puppeteer";
 import type { Course } from "../models/Course.js";
-import type { Section } from "../models/Section.js";
-import type { Term } from "../models/Term.js";
+import { connectToDB } from "../db/connectToDB.js";
+import { Db } from "mongodb";
+import { rmpUpdate } from "./rmpUpdate.js";
+
+const db: Db = await connectToDB();
 
 export async function scrapeCurrentPage(term: string, page: Page) {
   const rows = await page.$$("tr");
 
   const results: Course[] = [];
-  let visited = new Set<number>();
   let current: Course | null = null;
 
   for (const row of rows) {
@@ -72,7 +74,13 @@ export async function scrapeCurrentPage(term: string, page: Page) {
         nonTestBucket == "SE"
       ) {
         if (current.Teacher.length <= 0) {
-          current.Teacher = nestedRows[9];
+          current.Teacher = nestedRows[9]
+            .toLowerCase()
+            .split(", ")
+            .join(" ")
+            .split(" ")
+            .slice(0, 2)
+            .join(" ");
         }
 
         if (current.Lecture == null && nonTestBucket === "LE") {
@@ -108,7 +116,13 @@ export async function scrapeCurrentPage(term: string, page: Page) {
         }
       } else if (nonTestBucket === "IT") {
         if (current.Teacher.length <= 0) {
-          current.Teacher = nestedRows[9];
+          current.Teacher = nestedRows[9]
+            .toLowerCase()
+            .split(", ")
+            .join(" ")
+            .split(" ")
+            .slice(0, 2)
+            .join(" ");
         }
 
         current.Lecture = {
@@ -116,6 +130,18 @@ export async function scrapeCurrentPage(term: string, page: Page) {
           Time: nestedRows[5],
           Location: nestedRows[5],
         };
+      }
+    }
+
+    // TODO: for some reason this matching isn't working, i need to find a new way to match
+    // Check if teacher exists in the document folder in DB
+    if (current?.Teacher && current.Teacher.length > 0) {
+      const exists = await db
+        .collection("rmpData")
+        .findOne({ name: { $regex: current.Teacher } });
+
+      if (!exists) {
+        await rmpUpdate(current.Teacher);
       }
     }
   }

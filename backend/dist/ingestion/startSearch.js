@@ -7,9 +7,9 @@ import { disconnectFromDB } from "../db/disconnectFromDB.js";
 import { insertDB } from "../services/insertDB.js";
 import { scrapeCurrentPage } from "./scrapeCurrentPage.js";
 // TODO: RMP data for each subject (should be in scrape each page, so when were scraping each prof we use the API to search as well)
+//
 // - Check Mongo scraped items to check where there are blanks and validate items
-// - Move this file to services maybe, since it touches the DB
-// - Create document folder in mongo to store the RMP api data for fast retrieval (don't have to call each time, this should be it's own file)
+//
 // - Check harpoon for index.ts that is where i was testing the RMP API
 export async function startSearch() {
     // Browser intialization

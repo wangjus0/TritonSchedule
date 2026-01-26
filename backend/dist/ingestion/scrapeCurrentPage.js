@@ -1,3 +1,7 @@
+import { connectToDB } from "../db/connectToDB.js";
+import { Db } from "mongodb";
+import { rmpUpdate } from "./rmpUpdate.js";
+const db = await connectToDB();
 export async function scrapeCurrentPage(term, page) {
     const rows = await page.$$("tr");
     const results = [];
@@ -43,7 +47,13 @@ export async function scrapeCurrentPage(term, page) {
                 nonTestBucket === "LE" ||
                 nonTestBucket == "SE") {
                 if (current.Teacher.length <= 0) {
-                    current.Teacher = nestedRows[9];
+                    current.Teacher = nestedRows[9]
+                        .toLowerCase()
+                        .split(", ")
+                        .join(" ")
+                        .split(" ")
+                        .slice(0, 2)
+                        .join(" ");
                 }
                 if (current.Lecture == null && nonTestBucket === "LE") {
                     current.Lecture = {
@@ -78,13 +88,28 @@ export async function scrapeCurrentPage(term, page) {
             }
             else if (nonTestBucket === "IT") {
                 if (current.Teacher.length <= 0) {
-                    current.Teacher = nestedRows[9];
+                    current.Teacher = nestedRows[9]
+                        .toLowerCase()
+                        .split(", ")
+                        .join(" ")
+                        .split(" ")
+                        .slice(0, 2)
+                        .join(" ");
                 }
                 current.Lecture = {
                     Days: nestedRows[5],
                     Time: nestedRows[5],
                     Location: nestedRows[5],
                 };
+            }
+        }
+        // Check if teacher exists in the document folder in DB
+        if (current?.Teacher && current.Teacher.length > 0) {
+            const exists = await db
+                .collection("rmpData")
+                .findOne({ name: { $regex: current.Teacher } });
+            if (!exists) {
+                await rmpUpdate(current.Teacher);
             }
         }
     }

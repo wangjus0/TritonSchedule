@@ -1,9 +1,6 @@
 import { connectToDB } from "../db/connectToDB.js";
 import { disconnectFromDB } from "../db/disconnectFromDB.js";
 import type { Term } from "../models/Term.js";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 export async function createTerm(newTerm: string) {
   const db = await connectToDB();
@@ -21,5 +18,3 @@ export async function createTerm(newTerm: string) {
 
   return;
 }
-
-createTerm("WI30");
