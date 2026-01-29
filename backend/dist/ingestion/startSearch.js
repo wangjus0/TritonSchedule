@@ -6,13 +6,14 @@ import { connectToDB } from "../db/connectToDB.js";
 import { disconnectFromDB } from "../db/disconnectFromDB.js";
 import { insertDB } from "../services/insertDB.js";
 import { scrapeCurrentPage } from "./scrapeCurrentPage.js";
+import { rmpUpdate } from "./rmpUpdate.js";
 export async function startSearch() {
     // Browser intialization
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
     const db = await connectToDB();
     const subjectBar = new cliProgress.SingleBar({
-        format: "Progress |{bar}| {value}/{total} | Current Subject: {code}",
+        format: "Course Progress |{bar}| {value}/{total} | Current Subject: {code}",
         clearOnComplete: true,
     }, cliProgress.Presets.shades_classic);
     subjectBar.start(SUBJECT_CODES.length, 0, { code: "" });
@@ -75,6 +76,7 @@ export async function startSearch() {
         }
         subjectBar.increment();
     }
+    await rmpUpdate();
     subjectBar.stop(); // Close TUI
     disconnectFromDB(); // Close connect to DB
     browser.close(); // To close the browser instance

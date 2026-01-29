@@ -2,7 +2,6 @@ import type { Page } from "puppeteer";
 import type { Course } from "../models/Course.js";
 import { connectToDB } from "../db/connectToDB.js";
 import { Db } from "mongodb";
-import { rmpUpdate } from "./rmpUpdate.js";
 
 const db: Db = await connectToDB();
 
@@ -74,7 +73,6 @@ export async function scrapeCurrentPage(term: string, page: Page) {
       ) {
         if (current.Teacher.length <= 0) {
           current.Teacher = nestedRows[9];
-          // await rmpUpdate(current.Teacher);
         }
 
         if (current.Lecture == null && nonTestBucket === "LE") {
@@ -111,7 +109,6 @@ export async function scrapeCurrentPage(term: string, page: Page) {
       } else if (nonTestBucket === "IT") {
         if (current.Teacher.length <= 0) {
           current.Teacher = nestedRows[9];
-          // await rmpUpdate(current.Teacher);
         }
 
         current.Lecture = {

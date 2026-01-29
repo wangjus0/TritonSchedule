@@ -47,7 +47,6 @@ export async function scrapeCurrentPage(term, page) {
                 nonTestBucket == "SE") {
                 if (current.Teacher.length <= 0) {
                     current.Teacher = nestedRows[9];
-                    // await rmpUpdate(current.Teacher);
                 }
                 if (current.Lecture == null && nonTestBucket === "LE") {
                     current.Lecture = {
@@ -83,7 +82,6 @@ export async function scrapeCurrentPage(term, page) {
             else if (nonTestBucket === "IT") {
                 if (current.Teacher.length <= 0) {
                     current.Teacher = nestedRows[9];
-                    // await rmpUpdate(current.Teacher);
                 }
                 current.Lecture = {
                     Days: nestedRows[5],

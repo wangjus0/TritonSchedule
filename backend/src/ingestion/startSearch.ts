@@ -6,6 +6,7 @@ import { connectToDB } from "../db/connectToDB.js";
 import { disconnectFromDB } from "../db/disconnectFromDB.js";
 import { insertDB } from "../services/insertDB.js";
 import { scrapeCurrentPage } from "./scrapeCurrentPage.js";
+import { rmpUpdate } from "./rmpUpdate.js";
 
 export async function startSearch() {
   // Browser intialization
@@ -14,7 +15,7 @@ export async function startSearch() {
   const db: Db = await connectToDB();
   const subjectBar = new cliProgress.SingleBar(
     {
-      format: "Progress |{bar}| {value}/{total} | Current Subject: {code}",
+      format: "Course Progress |{bar}| {value}/{total} | Current Subject: {code}",
       clearOnComplete: true,
     },
     cliProgress.Presets.shades_classic,
@@ -114,6 +115,8 @@ export async function startSearch() {
     subjectBar.increment();
   }
 
+  await rmpUpdate();
+
   subjectBar.stop(); // Close TUI
 
   disconnectFromDB(); // Close connect to DB
@@ -123,5 +126,5 @@ export async function startSearch() {
   return;
 }
 
-// XXX: Used for testing purposes ATM, get rid of once the function is being called in ingest.ts
+// TESTING (delete later)
 await startSearch();
