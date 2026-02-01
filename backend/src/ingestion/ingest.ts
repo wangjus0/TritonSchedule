@@ -6,9 +6,6 @@ import { getActiveTermFromDB } from "./getActiveTermFromDB.js";
 import { createTerm } from "./createTerm.js";
 import { startSearch } from "./startSearch.js";
 import { markAllTermsInactive } from "./markAllTermsInactive.js";
-import { testPrint } from "./scrapeCurrentPage.js";
-
-// TODO: Finish the ingest() function
 
 // XXX: Current util functions for ingestion (gona use vercel cron http for repeated ingestion)
 // https://vercel.com/docs/cron-jobs 
@@ -30,19 +27,18 @@ async function ingest() {
   const detectedTerm = await detectCurrentTerm(); // Determine new term
   const activeTerm = await getActiveTermFromDB(); // Determine term before
 
-  // if (!activeTerm) {
-  //   // first-ever run
-  //   await createTerm(detectedTerm);
-  //   await startSearch(detectedTerm);
-  // } else if (activeTerm.term !== detectedTerm) {
-  //   // term rollover
-  //   await markAllTermsInactive();
-  //   await createTerm(detectedTerm);
-  //   await startSearch(detectedTerm);
-  // }
+  if (!activeTerm) {
+    // first-ever run
+    await createTerm(detectedTerm);
+    await startSearch(detectedTerm);
+  } else if (activeTerm.term !== detectedTerm) {
+    // term rollover
+    await markAllTermsInactive();
+    await createTerm(detectedTerm);
+    await startSearch(detectedTerm);
+  }
 
   await disconnectFromDB();
-  console.log("Ingestion Complete");
 
   return;
 
