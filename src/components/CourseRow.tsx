@@ -1,18 +1,28 @@
-import { ChevronDown, Clock, User, Plus, Check, BookOpen, FileText } from "lucide-react";
+import { ChevronDown, Clock, Users, Plus, Check, BookOpen, FileText, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Course } from "@/data/sampleCourses";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Course, DiscussionSection } from "@/data/sampleCourses";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 interface CourseRowProps {
   course: Course;
   isAdded: boolean;
-  onAddToCalendar: (course: Course) => void;
+  onAddToCalendar: (course: Course, selectedDiscussion?: DiscussionSection) => void;
 }
 
 export function CourseRow({ course, isAdded, onAddToCalendar }: CourseRowProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedDiscussionId, setSelectedDiscussionId] = useState<string | undefined>(
+    course.discussionSections?.[0]?.id
+  );
+
+  const selectedDiscussion = course.discussionSections?.find(
+    (d) => d.id === selectedDiscussionId
+  );
+
+  const hasDiscussions = course.discussionSections && course.discussionSections.length > 0;
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -55,12 +65,34 @@ export function CourseRow({ course, isAdded, onAddToCalendar }: CourseRowProps) 
                 </div>
               </div>
               
-              {course.discussionTimes && (
+              {hasDiscussions && (
                 <div className="flex items-start gap-2">
-                  <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Discussions</p>
-                    <p className="text-sm text-foreground">{course.discussionTimes}</p>
+                  <Users className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Discussion Section</p>
+                    <Select value={selectedDiscussionId} onValueChange={setSelectedDiscussionId}>
+                      <SelectTrigger className="h-8 text-sm bg-background">
+                        <SelectValue placeholder="Select a section" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover z-50">
+                        {course.discussionSections!.map((section) => (
+                          <SelectItem key={section.id} value={section.id}>
+                            <div className="flex flex-col items-start">
+                              <span className="font-medium">{section.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {section.time} • {section.location}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedDiscussion && (
+                      <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
+                        <MapPin className="h-3 w-3" />
+                        {selectedDiscussion.location}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -89,7 +121,7 @@ export function CourseRow({ course, isAdded, onAddToCalendar }: CourseRowProps) 
             <Button
               onClick={(e) => {
                 e.stopPropagation();
-                onAddToCalendar(course);
+                onAddToCalendar(course, selectedDiscussion);
               }}
               disabled={isAdded}
               size="sm"

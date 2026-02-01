@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { CourseRow } from "@/components/CourseRow";
-import { sampleCourses, Course } from "@/data/sampleCourses";
+import { sampleCourses, Course, DiscussionSection } from "@/data/sampleCourses";
 import { useCalendar } from "@/context/CalendarContext";
 import { toast } from "sonner";
 
@@ -26,7 +26,7 @@ export default function SearchCourses() {
     return new Set(events.filter((e) => e.isCourse).map((e) => e.id));
   }, [events]);
 
-  const handleAddToCalendar = (course: Course) => {
+  const handleAddToCalendar = (course: Course, selectedDiscussion?: DiscussionSection) => {
     const today = new Date();
     
     const timeMatch = course.schedule.match(/(\d{1,2}:\d{2}\s*(?:AM|PM))\s*-\s*(\d{1,2}:\d{2}\s*(?:AM|PM))/i);
@@ -48,7 +48,8 @@ export default function SearchCourses() {
       isCourse: true,
     });
 
-    toast.success(`${course.name} added to your calendar!`);
+    const discussionInfo = selectedDiscussion ? ` with ${selectedDiscussion.name}` : "";
+    toast.success(`${course.name}${discussionInfo} added to your calendar!`);
   };
 
   return (
