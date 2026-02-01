@@ -59,7 +59,7 @@ export function CourseRow({ course, isAdded, onAddToCalendar }: CourseRowProps) 
                 <div className="flex items-start gap-2">
                   <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Discussion</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Discussions</p>
                     <p className="text-sm text-foreground">{course.discussionTimes}</p>
                   </div>
                 </div>
