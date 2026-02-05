@@ -6,6 +6,7 @@ interface CalendarContextType {
   addEvent: (event: CalendarEvent) => void;
   updateEvent: (id: string, event: Partial<CalendarEvent>) => void;
   deleteEvent: (id: string) => void;
+  deleteEventsByCourseId: (courseId: string) => void;
 }
 
 const CalendarContext = createContext<CalendarContextType | undefined>(undefined);
@@ -29,8 +30,14 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
     setEvents((prev) => prev.filter((event) => event.id !== id));
   };
 
+  const deleteEventsByCourseId = (courseId: string) => {
+    setEvents((prev) => prev.filter((event) => event.courseId !== courseId));
+  };
+
   return (
-    <CalendarContext.Provider value={{ events, addEvent, updateEvent, deleteEvent }}>
+    <CalendarContext.Provider
+      value={{ events, addEvent, updateEvent, deleteEvent, deleteEventsByCourseId }}
+    >
       {children}
     </CalendarContext.Provider>
   );

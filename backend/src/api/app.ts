@@ -20,7 +20,7 @@ app.use(
 // Middleware for parsing JSON
 app.use(express.json());
 
-// Intial page rendering (rest by react)
+// Intial page rendering (rest by react) -- just need to load the initial html
 app.get("/", (req, res) => {
   const resource = path.resolve(process.cwd(), "..", "frontend", "index.html");
   res.sendFile(resource);

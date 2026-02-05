@@ -7,6 +7,7 @@ import { createTerm } from "./createTerm.js";
 import { startSearch } from "./startSearch.js";
 import { markAllTermsInactive } from "./markAllTermsInactive.js";
 import { testPrint } from "./scrapeCurrentPage.js";
+
 // TODO: Finish the ingest() function
 // XXX: Current util functions for ingestion (gona use vercel cron http for repeated ingestion)
 // https://vercel.com/docs/cron-jobs 
@@ -19,24 +20,26 @@ import { testPrint } from "./scrapeCurrentPage.js";
 // - I need to figure out what i'm going to do with course data from 2 terms ago.
 // Because we want to keep up to 2 terms of data in the DB, so I need figure out the 
 // document folder situation.
+
 async function ingest() {
-    const db = await connectToDB();
-    const detectedTerm = await detectCurrentTerm(); // Determine new term
-    const activeTerm = await getActiveTermFromDB(); // Determine term before
-    testPrint(detectedTerm);
-    console.log(detectedTerm);
-    // if (!activeTerm) {
-    //   // first-ever run
-    //   await createTerm(detectedTerm);
-    //   await startSearch(detectedTerm);
-    // } else if (activeTerm.term !== detectedTerm) {
-    //   // term rollover
-    //   await markAllTermsInactive();
-    //   await createTerm(detectedTerm);
-    //   await startSearch(detectedTerm);
-    // }
-    await disconnectFromDB();
-    console.log("Ingestion Complete");
-    return;
+  const db = await connectToDB();
+  const detectedTerm = await detectCurrentTerm(); // Determine new term
+  const activeTerm = await getActiveTermFromDB(); // Determine term before
+  testPrint(detectedTerm);
+  console.log(detectedTerm);
+  // if (!activeTerm) {
+  //   // first-ever run
+  //   await createTerm(detectedTerm);
+  //   await startSearch(detectedTerm);
+  // } else if (activeTerm.term !== detectedTerm) {
+  //   // term rollover
+  //   await markAllTermsInactive();
+  //   await createTerm(detectedTerm);
+  //   await startSearch(detectedTerm);
+  // }
+  await disconnectFromDB();
+  console.log("Ingestion Complete");
+  return;
 }
+
 ingest();

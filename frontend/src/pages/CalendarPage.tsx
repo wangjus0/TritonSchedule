@@ -1,17 +1,8 @@
-import { useState, useMemo } from "react";
-import {
-  format,
-  startOfWeek,
-  addDays,
-  addWeeks,
-  subWeeks,
-  isSameDay,
-} from "date-fns";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { EventModal } from "@/components/EventModal";
+import { useMemo, useState } from "react";
+import { format } from "date-fns";
 import { useCalendar } from "@/context/CalendarContext";
-import { CalendarEvent } from "@/types/calendar";
+import { Button } from "@/components/ui/button";
+import { CalendarEvent, Weekday } from "@/types/calendar";
 import { cn } from "@/lib/utils";
 
 const HOUR_HEIGHT = 60; // pixels per hour
@@ -24,6 +15,13 @@ function parseTime(timeStr: string): number {
   return hours + minutes / 60;
 }
 
+function formatTo12Hour(timeStr: string): string {
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  const period = hours >= 12 ? "PM" : "AM";
+  const normalizedHours = hours % 12 === 0 ? 12 : hours % 12;
+  return `${normalizedHours}:${minutes.toString().padStart(2, "0")} ${period}`;
+}
+
 function getEventStyle(event: CalendarEvent, overlappingEvents: CalendarEvent[], index: number) {
   const startTime = parseTime(event.startTime);
   const endTime = parseTime(event.endTime);
@@ -33,9 +31,11 @@ function getEventStyle(event: CalendarEvent, overlappingEvents: CalendarEvent[],
   const height = duration * HOUR_HEIGHT;
   
   const totalOverlapping = overlappingEvents.length;
-  const width = totalOverlapping > 1 ? `${100 / totalOverlapping}%` : "100%";
-  const left = totalOverlapping > 1 ? `${(index * 100) / totalOverlapping}%` : "0";
-  
+  const offset = 36;
+  const totalOffset = Math.max(0, (totalOverlapping - 1) * offset);
+  const width = totalOverlapping > 1 ? `calc(100% - ${totalOffset}px)` : "100%";
+  const left = totalOverlapping > 1 ? `${index * offset}px` : "0";
+
   return { top, height, width, left };
 }
 
@@ -44,7 +44,7 @@ function findOverlappingEvents(event: CalendarEvent, allEvents: CalendarEvent[])
   const eventEnd = parseTime(event.endTime);
   
   return allEvents.filter((other) => {
-    if (!isSameDay(new Date(other.date), new Date(event.date))) return false;
+    if (other.dayOfWeek !== event.dayOfWeek) return false;
     const otherStart = parseTime(other.startTime);
     const otherEnd = parseTime(other.endTime);
     return eventStart < otherEnd && eventEnd > otherStart;
@@ -52,91 +52,36 @@ function findOverlappingEvents(event: CalendarEvent, allEvents: CalendarEvent[])
 }
 
 export default function CalendarPage() {
-  const [currentWeekStart, setCurrentWeekStart] = useState(() => 
-    startOfWeek(new Date(), { weekStartsOn: 1 })
-  );
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedTime, setSelectedTime] = useState<string>("09:00");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  const { events, addEvent, updateEvent, deleteEvent } = useCalendar();
+  const { events, deleteEventsByCourseId, deleteEvent } = useCalendar();
+  const [focusedEventId, setFocusedEventId] = useState<string | null>(null);
 
-  const weekDays = useMemo(() => {
-    return Array.from({ length: 5 }, (_, i) => addDays(currentWeekStart, i));
-  }, [currentWeekStart]);
+  const weekDays: { key: Weekday; label: string }[] = [
+    { key: "Mon", label: "Monday" },
+    { key: "Tue", label: "Tuesday" },
+    { key: "Wed", label: "Wednesday" },
+    { key: "Thu", label: "Thursday" },
+    { key: "Fri", label: "Friday" },
+  ];
 
   const timeSlots = useMemo(() => {
     return Array.from({ length: TOTAL_HOURS }, (_, i) => START_HOUR + i);
   }, []);
 
-  const getEventsForDay = (day: Date) => {
-    return events.filter((event) => isSameDay(new Date(event.date), day));
+  const getEventsForDay = (day: Weekday) => {
+    return events.filter((event) => event.dayOfWeek === day);
   };
-
-  const handlePrevWeek = () => setCurrentWeekStart(subWeeks(currentWeekStart, 1));
-  const handleNextWeek = () => setCurrentWeekStart(addWeeks(currentWeekStart, 1));
-  const handleToday = () => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
-
-  const handleTimeSlotClick = (day: Date, hour: number) => {
-    setSelectedDate(day);
-    setSelectedTime(`${hour.toString().padStart(2, "0")}:00`);
-    setEditingEvent(null);
-    setModalOpen(true);
-  };
-
-  const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingEvent(event);
-    setSelectedDate(new Date(event.date));
-    setSelectedTime(event.startTime);
-    setModalOpen(true);
-  };
-
-  const handleAddEvent = () => {
-    setSelectedDate(new Date());
-    setSelectedTime("09:00");
-    setEditingEvent(null);
-    setModalOpen(true);
-  };
-
-  const handleSaveEvent = (eventData: Omit<CalendarEvent, "id"> & { id?: string }) => {
-    if (eventData.id) {
-      updateEvent(eventData.id, eventData);
-    } else {
-      addEvent({
-        ...eventData,
-        id: crypto.randomUUID(),
-      });
-    }
-  };
-
-  const weekRangeText = `${format(weekDays[0], "MMM d")} - ${format(weekDays[4], "MMM d, yyyy")}`;
 
   return (
-    <div className="p-6 h-full flex flex-col">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">{weekRangeText}</h1>
-          <p className="text-muted-foreground">Weekly Schedule</p>
+    <div className="min-h-[calc(100vh-6rem)] flex items-center justify-center p-6">
+      <div className="w-full max-w-6xl">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Weekly Schedule</h1>
+            <p className="text-muted-foreground">Monday through Friday</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleToday}>
-            Today
-          </Button>
-          <Button variant="outline" size="icon" onClick={handlePrevWeek}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" onClick={handleNextWeek}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button onClick={handleAddEvent} className="ml-2">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Event
-          </Button>
-        </div>
-      </div>
 
-      <div className="flex-1 border border-border rounded-lg overflow-hidden bg-card flex flex-col">
+        <div className="border border-border rounded-lg overflow-hidden bg-card flex flex-col">
         {/* Day headers */}
         <div className="grid grid-cols-[60px_repeat(5,1fr)] border-b border-border bg-muted/50">
           <div className="px-2 py-3 text-center text-sm font-medium text-muted-foreground border-r border-border">
@@ -144,31 +89,18 @@ export default function CalendarPage() {
           </div>
           {weekDays.map((day) => (
             <div
-              key={day.toISOString()}
-              className={cn(
-                "px-2 py-3 text-center border-r border-border last:border-r-0",
-                isSameDay(day, new Date()) && "bg-primary/10"
-              )}
+              key={day.key}
+              className={cn("px-2 py-3 text-center border-r border-border last:border-r-0")}
             >
               <div className="text-sm font-medium text-muted-foreground">
-                {format(day, "EEE")}
-              </div>
-              <div
-                className={cn(
-                  "text-lg font-semibold",
-                  isSameDay(day, new Date())
-                    ? "text-primary"
-                    : "text-foreground"
-                )}
-              >
-                {format(day, "d")}
+                {day.label}
               </div>
             </div>
           ))}
         </div>
 
         {/* Time grid */}
-        <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="overflow-y-auto">
           <div className="grid grid-cols-[60px_repeat(5,1fr)]">
             {/* Time labels column */}
             <div className="border-r border-border">
@@ -188,22 +120,20 @@ export default function CalendarPage() {
 
             {/* Day columns */}
             {weekDays.map((day) => {
-              const dayEvents = getEventsForDay(day);
+              const dayEvents = getEventsForDay(day.key);
               
               return (
                 <div
-                  key={day.toISOString()}
+                  key={day.key}
                   className={cn(
-                    "relative border-r border-border last:border-r-0",
-                    isSameDay(day, new Date()) && "bg-primary/5"
+                    "relative border-r border-border last:border-r-0"
                   )}
                 >
                   {/* Hour slots for clicking */}
                   {timeSlots.map((hour) => (
                     <div
                       key={hour}
-                      onClick={() => handleTimeSlotClick(day, hour)}
-                      className="h-[60px] border-b border-border cursor-pointer hover:bg-accent/30 transition-colors"
+                      className="h-[60px] border-b border-border"
                     />
                   ))}
 
@@ -217,22 +147,45 @@ export default function CalendarPage() {
                       return (
                         <div
                           key={event.id}
-                          onClick={(e) => handleEventClick(event, e)}
-                          className="absolute px-0.5 py-0.5 pointer-events-auto cursor-pointer group"
+                          className="absolute px-0.5 py-0.5 pointer-events-auto"
                           style={{
                             top: `${style.top}px`,
                             height: `${style.height}px`,
                             width: style.width,
                             left: style.left,
+                            zIndex: event.id === focusedEventId ? 50 : index + 1,
                           }}
                         >
                           <div
-                            className="h-full w-full rounded-md px-2 py-1 overflow-hidden text-white text-xs shadow-sm group-hover:opacity-90 transition-opacity"
+                            className="group relative h-full w-full cursor-pointer rounded-md px-2 py-1 overflow-hidden text-white text-xs shadow-sm ring-1 ring-white/40 transition-transform"
                             style={{ backgroundColor: event.color }}
+                            onClick={() => setFocusedEventId(event.id)}
                           >
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="secondary"
+                              className="absolute right-1 top-1 h-5 w-5 rounded-full bg-black/30 text-white hover:bg-black/50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (event.isCourse && event.courseId) {
+                                  deleteEventsByCourseId(event.courseId);
+                                } else {
+                                  deleteEvent(event.id);
+                                }
+                              }}
+                              aria-label="Remove event"
+                            >
+                              ×
+                            </Button>
+                            {event.eventType && (
+                              <div className="text-[10px] font-semibold uppercase tracking-wide opacity-90">
+                                {event.eventType}
+                              </div>
+                            )}
                             <div className="font-medium truncate">{event.title}</div>
                             <div className="opacity-90 truncate">
-                              {event.startTime} - {event.endTime}
+                              {formatTo12Hour(event.startTime)} - {formatTo12Hour(event.endTime)}
                             </div>
                           </div>
                         </div>
@@ -244,17 +197,8 @@ export default function CalendarPage() {
             })}
           </div>
         </div>
+        </div>
       </div>
-
-      <EventModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        event={editingEvent}
-        selectedDate={selectedDate || undefined}
-        defaultStartTime={selectedTime}
-        onSave={handleSaveEvent}
-        onDelete={deleteEvent}
-      />
     </div>
   );
 }

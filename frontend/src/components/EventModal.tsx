@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
-import { CalendarIcon, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -15,24 +12,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarEvent, eventColors } from "@/types/calendar";
+import { CalendarEvent, eventColors, Weekday } from "@/types/calendar";
 
 interface EventModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   event?: CalendarEvent | null;
-  selectedDate?: Date;
+  selectedDay?: Weekday;
   defaultStartTime?: string;
   onSave: (event: Omit<CalendarEvent, "id"> & { id?: string }) => void;
   onDelete?: (id: string) => void;
@@ -42,33 +34,40 @@ export function EventModal({
   open,
   onOpenChange,
   event,
-  selectedDate,
+  selectedDay,
   defaultStartTime = "09:00",
   onSave,
   onDelete,
 }: EventModalProps) {
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState<Date>(new Date());
+  const [dayOfWeek, setDayOfWeek] = useState<Weekday>("Mon");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
   const [color, setColor] = useState(eventColors[0].value);
+  const weekDays: { value: Weekday; label: string }[] = [
+    { value: "Mon", label: "Monday" },
+    { value: "Tue", label: "Tuesday" },
+    { value: "Wed", label: "Wednesday" },
+    { value: "Thu", label: "Thursday" },
+    { value: "Fri", label: "Friday" },
+  ];
 
   useEffect(() => {
     if (event) {
       setTitle(event.title);
-      setDate(new Date(event.date));
+      setDayOfWeek(event.dayOfWeek);
       setStartTime(event.startTime);
       setEndTime(event.endTime);
       setColor(event.color);
     } else {
       setTitle("");
-      setDate(selectedDate || new Date());
+      setDayOfWeek(selectedDay || "Mon");
       setStartTime(defaultStartTime);
       const [hours] = defaultStartTime.split(":").map(Number);
       setEndTime(`${(hours + 1).toString().padStart(2, "0")}:00`);
       setColor(eventColors[0].value);
     }
-  }, [event, selectedDate, open]);
+  }, [event, selectedDay, open, defaultStartTime]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +76,7 @@ export function EventModal({
     onSave({
       id: event?.id,
       title: title.trim(),
-      date,
+      dayOfWeek,
       startTime,
       endTime,
       color,
@@ -120,30 +119,19 @@ export function EventModal({
             </div>
 
             <div className="space-y-2">
-              <Label>Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={(d) => d && setDate(d)}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
+              <Label>Day</Label>
+              <Select value={dayOfWeek} onValueChange={(value) => setDayOfWeek(value as Weekday)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {weekDays.map((day) => (
+                    <SelectItem key={day.value} value={day.value}>
+                      {day.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

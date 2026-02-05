@@ -12,6 +12,9 @@ export interface Course {
   schedule: string;
   description: string;
   color: string;
+  rmpRating?: number;
+  rmpTakeAgain?: number;
+  rmpAvgDifficulty?: number;
   discussionSections?: DiscussionSection[];
   midterm?: string;
   final?: string;
@@ -25,6 +28,9 @@ export const sampleCourses: Course[] = [
     schedule: "Mon, Wed, Fri 9:00 AM - 10:30 AM",
     description: "Fundamentals of programming and computational thinking using Python.",
     color: "hsl(221, 83%, 53%)",
+    rmpRating: 4.6,
+    rmpTakeAgain: 92,
+    rmpAvgDifficulty: 2.3,
     discussionSections: [
       { id: "1a", name: "Section A", time: "Thu 3:00 PM - 4:00 PM", location: "Room 101" },
       { id: "1b", name: "Section B", time: "Thu 4:00 PM - 5:00 PM", location: "Room 102" },
@@ -40,6 +46,9 @@ export const sampleCourses: Course[] = [
     schedule: "Tue, Thu 11:00 AM - 12:30 PM",
     description: "Introduction to differential and integral calculus, limits, and derivatives.",
     color: "hsl(142, 71%, 45%)",
+    rmpRating: 4.2,
+    rmpTakeAgain: 76,
+    rmpAvgDifficulty: 3.1,
     discussionSections: [
       { id: "2a", name: "Section A", time: "Wed 2:00 PM - 3:00 PM", location: "Room 205" },
       { id: "2b", name: "Section B", time: "Wed 3:00 PM - 4:00 PM", location: "Room 206" },
@@ -54,6 +63,9 @@ export const sampleCourses: Course[] = [
     schedule: "Mon, Wed 2:00 PM - 3:30 PM",
     description: "Survey of British and American literature from the Renaissance to modern day.",
     color: "hsl(262, 83%, 58%)",
+    rmpRating: 4.8,
+    rmpTakeAgain: 88,
+    rmpAvgDifficulty: 2.0,
     discussionSections: [
       { id: "3a", name: "Section A", time: "Fri 10:00 AM - 11:00 AM", location: "Room 310" },
       { id: "3b", name: "Section B", time: "Fri 11:00 AM - 12:00 PM", location: "Room 311" },
@@ -68,6 +80,9 @@ export const sampleCourses: Course[] = [
     schedule: "Tue, Thu 9:00 AM - 10:30 AM",
     description: "Introduction to mechanics, thermodynamics, and wave phenomena.",
     color: "hsl(25, 95%, 53%)",
+    rmpRating: 3.9,
+    rmpTakeAgain: 64,
+    rmpAvgDifficulty: 3.6,
     discussionSections: [
       { id: "4a", name: "Section A", time: "Mon 4:00 PM - 5:00 PM", location: "Lab 101" },
       { id: "4b", name: "Section B", time: "Wed 4:00 PM - 5:00 PM", location: "Lab 102" },
@@ -83,6 +98,9 @@ export const sampleCourses: Course[] = [
     schedule: "Fri 1:00 PM - 4:00 PM",
     description: "Exploration of visual arts from ancient civilizations to contemporary movements.",
     color: "hsl(340, 82%, 52%)",
+    rmpRating: 4.4,
+    rmpTakeAgain: 81,
+    rmpAvgDifficulty: 2.7,
     midterm: "Fri, Feb 21 @ 1:00 PM - 2:30 PM",
     final: "Fri, Mar 21 @ 3:00 PM - 6:00 PM",
   },
@@ -93,6 +111,9 @@ export const sampleCourses: Course[] = [
     schedule: "Mon, Wed, Fri 11:00 AM - 12:00 PM",
     description: "Overview of human behavior, cognition, and mental processes.",
     color: "hsl(180, 70%, 45%)",
+    rmpRating: 4.1,
+    rmpTakeAgain: 73,
+    rmpAvgDifficulty: 3.0,
     discussionSections: [
       { id: "6a", name: "Section A", time: "Tue 1:00 PM - 2:00 PM", location: "Room 401" },
       { id: "6b", name: "Section B", time: "Tue 2:00 PM - 3:00 PM", location: "Room 402" },

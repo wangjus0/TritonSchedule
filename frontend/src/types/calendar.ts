@@ -1,12 +1,16 @@
 export interface CalendarEvent {
   id: string;
   title: string;
-  date: Date;
+  dayOfWeek: Weekday;
   startTime: string;
   endTime: string;
   color: string;
   isCourse?: boolean;
+  courseId?: string;
+  eventType?: string;
 }
+
+export type Weekday = "Mon" | "Tue" | "Wed" | "Thu" | "Fri";
 
 export type EventColor = {
   label: string;
