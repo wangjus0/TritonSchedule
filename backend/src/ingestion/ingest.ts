@@ -1,6 +1,6 @@
-import { connectToDB } from "../db/connectToDB.js";
+import { connectToDB } from "../services/connectToDB.js";
 import { Db } from "mongodb";
-import { disconnectFromDB } from "../db/disconnectFromDB.js";
+import { disconnectFromDB } from "../services/disconnectFromDB.js";
 import { detectCurrentTerm } from "./detectCurrentTerm.js";
 import { getActiveTermFromDB } from "./getActiveTermFromDB.js";
 import { createTerm } from "./createTerm.js";

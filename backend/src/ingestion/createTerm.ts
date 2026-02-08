@@ -1,4 +1,4 @@
-import { connectToDB } from "../db/connectToDB.js";
+import { connectToDB } from "../services/connectToDB.js";
 import type { Term } from "../models/Term.js";
 
 export async function createTerm(newTerm: string) {

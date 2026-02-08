@@ -1,7 +1,9 @@
-import { connectToDB } from "../db/connectToDB.js";
+import { connectToDB } from "../services/connectToDB.js";
 import { Db } from "mongodb";
-const db = await connectToDB();
-export async function scrapeCurrentPage(term, page) {
+import dotenv from "dotenv";
+dotenv.config();
+export async function scrapeCurrentPage(subject, term, page) {
+    const db = await connectToDB();
     const rows = await page.$$("tr");
     const results = [];
     let current = null;
@@ -13,7 +15,7 @@ export async function scrapeCurrentPage(term, page) {
         let combinedTitle = "";
         // Check if courseNumber or courseTitle is undefined before assigning
         if (courseNumber != undefined && courseTitle != undefined) {
-            combinedTitle = `${courseNumber} ${courseTitle}`;
+            combinedTitle = `${subject} ${courseNumber}: ${courseTitle}`;
         }
         if (combinedTitle.length > 0) {
             if (current != null) {
@@ -91,8 +93,4 @@ export async function scrapeCurrentPage(term, page) {
         }
     }
     return results;
-}
-export function testPrint(term) {
-    console.log(term);
-    return;
 }

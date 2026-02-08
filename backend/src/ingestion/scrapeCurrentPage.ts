@@ -1,11 +1,15 @@
 import type { Page } from "puppeteer";
 import type { Course } from "../models/Course.js";
-import { connectToDB } from "../db/connectToDB.js";
+import { connectToDB } from "../services/connectToDB.js";
 import { Db } from "mongodb";
+import dotenv from "dotenv";
 
-const db: Db = await connectToDB();
+dotenv.config();
 
-export async function scrapeCurrentPage(term: string, page: Page) {
+export async function scrapeCurrentPage(subject: string, term: string, page: Page) {
+
+  const db: Db = await connectToDB();
+
   const rows = await page.$$("tr");
 
   const results: Course[] = [];
@@ -26,7 +30,7 @@ export async function scrapeCurrentPage(term: string, page: Page) {
 
     // Check if courseNumber or courseTitle is undefined before assigning
     if (courseNumber != undefined && courseTitle != undefined) {
-      combinedTitle = `${courseNumber} ${courseTitle}`;
+      combinedTitle = `${subject} ${courseNumber}: ${courseTitle}`;
     }
 
     if (combinedTitle.length > 0) {

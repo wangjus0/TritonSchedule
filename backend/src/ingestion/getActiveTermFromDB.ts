@@ -1,5 +1,5 @@
-import { connectToDB } from "../db/connectToDB.js";
-import { disconnectFromDB } from "../db/disconnectFromDB.js";
+import { connectToDB } from "../services/connectToDB.js";
+import { disconnectFromDB } from "../services/disconnectFromDB.js";
 
 export async function getActiveTermFromDB() {
   const db = await connectToDB();
