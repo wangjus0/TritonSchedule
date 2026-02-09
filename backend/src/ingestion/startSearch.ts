@@ -9,7 +9,6 @@ import { scrapeCurrentPage } from "./scrapeCurrentPage.js";
 import { rmpUpdate } from "./rmpUpdate.js";
 import dotenv from "dotenv";
 
-
 const SUBJECT_CODES: string[] = [
   "AIP ",
   "AAS ",

@@ -36,12 +36,12 @@ export function CourseRow({
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className="border border-border rounded-lg overflow-hidden bg-card transition-shadow hover:shadow-sm">
+      <div className="glass-panel overflow-hidden rounded-xl transition-all duration-200 hover:border-primary/35 hover:shadow-[0_14px_30px_hsl(var(--background)/0.6)]">
         <CollapsibleTrigger asChild>
-          <button className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-accent/50 transition-colors">
+          <button className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-accent/45 transition-colors">
             <div className="flex items-center gap-4 flex-1 min-w-0">
               <div
-                className="h-3 w-3 rounded-full shrink-0"
+                className="h-3 w-3 rounded-full shrink-0 ring-4 ring-background/60"
                 style={{ backgroundColor: course.color }}
               />
               <span className="text-sm text-muted-foreground shrink-0 w-40 truncate">
@@ -64,7 +64,7 @@ export function CourseRow({
         </CollapsibleTrigger>
         
         <CollapsibleContent>
-          <div className="px-4 pb-4 pt-2 border-t border-border bg-muted/30">
+          <div className="border-t border-border/70 bg-muted/30 px-4 pb-4 pt-2">
             <p className="text-sm text-muted-foreground mb-4">
               {course.description}
             </p>
@@ -93,13 +93,13 @@ export function CourseRow({
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Discussion Section</p>
                     <Select value={selectedDiscussionId} onValueChange={setSelectedDiscussionId}>
-                      <SelectTrigger className="h-10 w-full text-sm bg-background">
+                      <SelectTrigger className="h-10 w-full border-border/80 bg-background/60 text-sm">
                         <SelectValue
                           placeholder="Select a section"
                           className="block max-w-full truncate whitespace-nowrap"
                         />
                       </SelectTrigger>
-                      <SelectContent className="bg-popover z-50 max-w-[min(90vw,520px)]">
+                      <SelectContent className="z-50 max-w-[min(90vw,520px)] border-border/80 bg-popover/95 backdrop-blur">
                         {course.discussionSections!.map((section) => (
                           <SelectItem key={section.id} value={section.id} className="h-auto whitespace-normal py-2">
                             <div className="flex flex-col items-start gap-0.5">

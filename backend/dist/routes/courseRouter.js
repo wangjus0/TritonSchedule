@@ -4,13 +4,25 @@ const router = express.Router();
 router.get("/", async (req, res) => {
     const db = await connectToDB();
     const queryParams = req.query;
-    const term = typeof queryParams.term === "string" ? queryParams.term : undefined;
-    const course = typeof queryParams.course === "string" ? queryParams.course : undefined;
-    // const queryResults = await db.collection('courses').find({ Name: course, Term: term }).toArray();
-    const queryResults = await db.collection('courses').find({ Name: { $regex: course, $options: "i" } }).toArray();
-    if (queryResults.length <= 0) {
-        res.status(404).send('Item not found');
+    const term = typeof queryParams.term === "string" ? queryParams.term.trim() : "";
+    const course = typeof queryParams.course === "string" ? queryParams.course.trim() : "";
+    const query = {};
+    if (course.length > 0) {
+        const safeCourse = course
+            .replace(/[.*+?^${}()|[\]\\]/g, "\\$&") // escape regex chars
+            .replace(/\s+/g, "\\s+"); // allow flexible spaces
+        query.Name = { $regex: safeCourse, $options: "i" };
     }
-    res.json({ data: queryResults });
+    if (term.length > 0) {
+        const safeTerm = term
+            .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+            .replace(/\s+/g, "\\s+");
+        query.Term = { $regex: safeTerm, $options: "i" };
+    }
+    const queryResults = await db.collection("courses").find(query).toArray();
+    if (queryResults.length <= 0) {
+        return res.status(404).send('Item not found');
+    }
+    return res.json({ data: queryResults });
 });
 export default router;

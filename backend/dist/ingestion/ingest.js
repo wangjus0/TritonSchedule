@@ -35,3 +35,4 @@ async function ingest() {
     await disconnectFromDB();
     return;
 }
+ingest();

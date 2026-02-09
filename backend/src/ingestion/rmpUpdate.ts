@@ -13,7 +13,7 @@ export async function rmpUpdate(curTerm: string) {
 
   let searched = new Set<string>();
   const db: Db = await connectToDB();
-  let docs = await db.collection("courses").find({ term: curTerm }).toArray();
+  let docs = await db.collection("courses").find({ Term: curTerm }).toArray();
 
   const school = await searchSchool(schoolName);
 
@@ -21,7 +21,7 @@ export async function rmpUpdate(curTerm: string) {
   for (const doc of docs) {
     const cleanTeacher = doc.Teacher.replace(/\s+/g, " ")
       .replace(/[^\w\s]/g, "")
-      .trim();
+    // .trim();
 
     if (cleanTeacher.length > 0 && !searched.has(cleanTeacher)) {
       searched.add(cleanTeacher);
@@ -50,9 +50,11 @@ export async function rmpUpdate(curTerm: string) {
       const item = {
         avgRating: search.avgRating,
         avgDiff: search.avgDifficulty,
-        takeAgainPercent: search.wouldTakeAgainPercent,
+        takeAgainPercent: Math.trunc(search.wouldTakeAgainPercent),
         name: search.formattedName.toLowerCase(),
+        nameKey: teacher.toLowerCase(),
       };
+
       await insertDB(db, [item], "rmpData");
     }
 
@@ -64,3 +66,4 @@ export async function rmpUpdate(curTerm: string) {
   return;
 }
 
+await rmpUpdate("spring quarter 2026");

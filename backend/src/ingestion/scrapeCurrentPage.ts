@@ -43,7 +43,6 @@ export async function scrapeCurrentPage(subject: string, term: string, page: Pag
         Term: term,
         Teacher: "",
         Lecture: null,
-        Rating: "",
         Discussions: [],
         Midterms: [],
         Final: null,

@@ -26,7 +26,6 @@ export async function scrapeCurrentPage(subject, term, page) {
                 Term: term,
                 Teacher: "",
                 Lecture: null,
-                Rating: "",
                 Discussions: [],
                 Midterms: [],
                 Final: null,

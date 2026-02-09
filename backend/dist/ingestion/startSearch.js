@@ -271,4 +271,3 @@ export async function startSearch(term) {
     browser.close(); // To close the browser instance
     return;
 }
-startSearch("WI26");

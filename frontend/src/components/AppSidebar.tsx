@@ -1,17 +1,7 @@
-import { Search, Calendar } from "lucide-react";
+import { Calendar, Search } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TridentIcon } from "@/components/icons/TridentIcon";
 import { cn } from "@/lib/utils";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarHeader,
-} from "@/components/ui/sidebar";
 
 const navItems = [
   { title: "Search Courses", url: "/", icon: Search },
@@ -22,48 +12,39 @@ export function AppSidebar() {
   const location = useLocation();
 
   return (
-    <Sidebar className="border-r border-border">
-      <SidebarHeader className="p-4 border-b border-border">
+    <header className="sticky top-0 z-40 border-b border-sidebar-border/80 bg-sidebar/85 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-            <TridentIcon className="h-6 w-6 text-primary-foreground" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/40 bg-primary/85 shadow-[0_10px_24px_hsl(var(--primary)/0.3)]">
+            <TridentIcon className="h-5 w-5 text-primary-foreground [stroke-width:2.6]" />
           </div>
-          <div>
-            <h2 className="font-semibold text-foreground">Triton Schedule</h2>
-            <p className="text-xs text-muted-foreground">Student Portal</p>
+          <div className="leading-tight">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/75">UCSD Planner</p>
+            <h2 className="text-sm font-medium tracking-[0.01em] text-foreground/90">Triton Schedule</h2>
           </div>
         </div>
-      </SidebarHeader>
 
-      <SidebarContent className="px-2 py-4">
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => {
-                const isActive = location.pathname === item.url;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                          isActive
-                            ? "bg-primary text-primary-foreground"
-                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                        )}
-                      >
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.title}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
+        <nav className="flex items-center gap-2">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.url;
+            return (
+              <NavLink
+                key={item.title}
+                to={item.url}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all duration-200",
+                  isActive
+                    ? "border-primary/45 bg-primary/20 text-foreground shadow-[0_8px_24px_hsl(var(--primary)/0.22)]"
+                    : "border-transparent text-muted-foreground hover:border-sidebar-border/70 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                <span>{item.title}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
+      </div>
+    </header>
   );
 }

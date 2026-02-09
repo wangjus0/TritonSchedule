@@ -43,3 +43,5 @@ async function ingest() {
   return;
 
 }
+
+ingest();

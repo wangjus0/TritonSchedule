@@ -3,6 +3,10 @@ import express from "express";
 import path from "path";
 
 import courseRouter from "./routes/courseRouter.js";
+import termRouter from "./routes/termRouter.js";
+import rmpRouter from "./routes/rmpRouter.js";
+
+// TODO: I need to fix rmpUpdate() for some reason it's not searching some teachers up when there profile exists
 
 export const app = express(); // Set up express app
 
@@ -22,4 +26,8 @@ app.use("/course", courseRouter);
 app.listen(PORT, () => {
   console.log('Server started');
 });
+
+app.use("/rmp", rmpRouter);
+
+app.use("/term", termRouter);
 

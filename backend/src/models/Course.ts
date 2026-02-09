@@ -4,7 +4,6 @@ export type Course = {
   Name: string;
   Term: string;
   Teacher: string;
-  Rating: string;
   Lecture: Section | null;
   Discussions: Section[];
   Midterms: Section[];
