@@ -5,6 +5,7 @@ export type Course = {
   Term: string;
   Teacher: string;
   Lecture: Section | null;
+  Labs: Section[];
   Discussions: Section[];
   Midterms: Section[];
   Final: Section | null;

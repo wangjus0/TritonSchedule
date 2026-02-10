@@ -24,6 +24,7 @@ export async function scrapeCurrentPage(subject, term, page) {
                 Term: term,
                 Teacher: "",
                 Lecture: null,
+                Labs: [],
                 Discussions: [],
                 Midterms: [],
                 Final: null,
@@ -42,10 +43,12 @@ export async function scrapeCurrentPage(subject, term, page) {
         if (current != null) {
             if (nonTestBucket === "DI" ||
                 nonTestBucket === "LE" ||
-                nonTestBucket == "SE") {
+                nonTestBucket == "SE" ||
+                nonTestBucket == "LA") {
                 if (current.Teacher.length <= 0) {
                     current.Teacher = nestedRows[9];
                 }
+                // Lecture bucket
                 if (current.Lecture == null && nonTestBucket === "LE") {
                     current.Lecture = {
                         Days: nestedRows[5],
@@ -53,8 +56,17 @@ export async function scrapeCurrentPage(subject, term, page) {
                         Location: nestedRows[7] + " " + nestedRows[8],
                     };
                 }
+                // Discussion bucket
                 if (nonTestBucket === "DI") {
                     current.Discussions.push({
+                        Days: nestedRows[5],
+                        Time: nestedRows[6],
+                        Location: nestedRows[7] + " " + nestedRows[8],
+                    });
+                }
+                // Lab bucket
+                if (nonTestBucket === "LA") {
+                    current.Labs.push({
                         Days: nestedRows[5],
                         Time: nestedRows[6],
                         Location: nestedRows[7] + " " + nestedRows[8],
