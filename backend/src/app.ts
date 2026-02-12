@@ -1,6 +1,5 @@
 import dotenv from "dotenv";
 import cors from "cors";
-import type { CorsOptions } from "cors";
 import express from "express";
 import courseRouter from "./routes/courseRouter.js";
 import rmpRouter from "./routes/rmpRouter.js";
@@ -11,6 +10,21 @@ import { requireApiSecret } from "./middleware/requireApiSecret.js";
 dotenv.config();
 
 const app = express();
+
+const allowedOrigins = [
+  "https://triton-schedule-alpha.vercel.app",
+  "http://localhost:8080",
+];
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+app.options("*", cors());
 
 app.use(express.json());
 app.use(requireApiSecret);

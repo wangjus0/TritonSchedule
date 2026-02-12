@@ -28,8 +28,7 @@ function normalizeApiBase(rawBase: string): string {
     const url = new URL(trimmedBase);
     const pathname = url.pathname.replace(/\/+$/, "");
     if (!pathname) {
-      url.pathname = "/api";
-      return url.toString().replace(/\/+$/, "");
+      return url.origin;
     }
     return trimmedBase;
   } catch {

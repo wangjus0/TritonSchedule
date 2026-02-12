@@ -1,4 +1,7 @@
 export async function requireApiSecret(req: any, res: any, next: any) {
+  if (req.method === "OPTIONS") {
+    return next();
+  }
 
   const expected = process.env.API_KEY;
 
