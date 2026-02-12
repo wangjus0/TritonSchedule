@@ -1,5 +1,8 @@
 import dotenv from "dotenv";
+<<<<<<< HEAD
 import cors from "cors";
+=======
+>>>>>>> 351a7f1 (fixing rmp controller for no query params)
 import express from "express";
 import courseRouter from "./routes/courseRouter.js";
 import rmpRouter from "./routes/rmpRouter.js";
@@ -8,6 +11,7 @@ import termRouter from "./routes/termRouter.js";
 import { requireApiSecret } from "./middleware/requireApiSecret.js";
 dotenv.config();
 const app = express();
+<<<<<<< HEAD
 const allowedOrigins = (process.env.CORS_ORIGINS ?? "")
   .split(",")
   .map((origin) => origin.trim())
@@ -29,6 +33,8 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
+=======
+>>>>>>> 351a7f1 (fixing rmp controller for no query params)
 app.use(express.json());
 app.use(requireApiSecret);
 app.use("/course", courseRouter);
