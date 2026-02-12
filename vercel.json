@@ -5,7 +5,7 @@
   "outputDirectory": "frontend/dist",
   "rewrites": [
     {
-      "source": "/:path*",
+      "source": "/api/:path*",
       "destination": "/backend/src/app.ts"
     }
   ],
