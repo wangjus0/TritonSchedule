@@ -1,14 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" fill="#1f2937" />
-  <rect x="6" y="6" width="52" height="52" rx="10" fill="#0ea5e9" />
-  <text
-    x="32"
-    y="38"
-    font-family="Arial, sans-serif"
-    font-size="24"
-    text-anchor="middle"
-    fill="#ffffff"
-  >
-    TS
-  </text>
+  <rect width="64" height="64" fill="#0b1220" />
+  <rect x="6" y="6" width="52" height="52" rx="10" fill="#0f3d7a" />
+  <g transform="translate(16 12) scale(1.333333)" fill="none" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2v6" />
+    <path d="M12 8l-1 2h2l-1-2" />
+    <path d="M7 4v4" />
+    <path d="M7 8l-1 1.5h2L7 8" />
+    <path d="M7 9.5L9 12" />
+    <path d="M17 4v4" />
+    <path d="M17 8l-1 1.5h2L17 8" />
+    <path d="M17 9.5L15 12" />
+    <path d="M9 12h6" />
+    <path d="M12 12v10" />
+    <path d="M10 20h4" />
+  </g>
 </svg>

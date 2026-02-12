@@ -11,7 +11,7 @@ const Index = () => {
     <CalendarProvider>
       <div className="min-h-screen w-full">
         <AppSidebar />
-        <main className="bg-background/70 muted-grid">
+        <main className="min-h-[calc(100vh-4rem)] bg-background/70 muted-grid sm:min-h-[calc(100vh-4rem)]">
           <div key={location.pathname} className="page-transition">
             <Routes>
               <Route path="/" element={<SearchCourses />} />

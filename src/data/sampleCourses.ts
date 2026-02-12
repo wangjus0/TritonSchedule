@@ -5,6 +5,13 @@ export interface DiscussionSection {
   location: string;
 }
 
+export interface CourseExamSection {
+  id: string;
+  name: string;
+  time: string;
+  location: string;
+}
+
 export interface Course {
   id: string;
   name: string;
@@ -16,6 +23,9 @@ export interface Course {
   rmpTakeAgain?: number;
   rmpAvgDifficulty?: number;
   discussionSections?: DiscussionSection[];
+  labSections?: DiscussionSection[];
+  midtermSections?: CourseExamSection[];
+  finalSection?: CourseExamSection | null;
   midterm?: string;
   final?: string;
 }
