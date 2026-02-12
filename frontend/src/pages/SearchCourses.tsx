@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 const API_KEY = import.meta.env.VITE_API_KEY ?? import.meta.env.API_KEY ?? "";
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
-const API_BASE_FALLBACK = (import.meta.env.VITE_API_BASE_FALLBACK_URL ?? `${API_BASE}/api`).replace(/\/+$/, "");
+const API_BASE_FALLBACK = (import.meta.env.VITE_API_BASE_FALLBACK_URL ?? "").replace(/\/+$/, "");
 
 function buildApiUrl(path: string, base = API_BASE): string {
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
@@ -19,6 +19,7 @@ async function fetchApi(path: string, init: RequestInit): Promise<Response> {
 
   if (
     primaryResponse.status !== 404 ||
+    API_BASE_FALLBACK.length === 0 ||
     API_BASE_FALLBACK === API_BASE ||
     init.signal?.aborted
   ) {
