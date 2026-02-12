@@ -7,7 +7,7 @@ import { Weekday } from "@/types/calendar";
 import { toast } from "sonner";
 
 const API_KEY = import.meta.env.VITE_API_KEY ?? import.meta.env.API_KEY ?? "";
-const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? "/api" : "")).replace(/\/+$/, "");
 const API_BASE_FALLBACK = (import.meta.env.VITE_API_BASE_FALLBACK_URL ?? "").replace(/\/+$/, "");
 
 function buildApiUrl(path: string, base = API_BASE): string {
@@ -15,18 +15,33 @@ function buildApiUrl(path: string, base = API_BASE): string {
 }
 
 async function fetchApi(path: string, init: RequestInit): Promise<Response> {
-  const primaryResponse = await fetch(buildApiUrl(path), init);
+  const primaryBase = API_BASE.length > 0 ? API_BASE : API_BASE_FALLBACK;
+
+  if (primaryBase.length === 0) {
+    throw new Error("Missing API base URL. Set VITE_API_BASE_URL for production deployments.");
+  }
+
+  const primaryResponse = await fetch(buildApiUrl(path, primaryBase), init);
 
   if (
-    primaryResponse.status !== 404 ||
+    !shouldTryFallback(primaryResponse) ||
     API_BASE_FALLBACK.length === 0 ||
-    API_BASE_FALLBACK === API_BASE ||
+    API_BASE_FALLBACK === primaryBase ||
     init.signal?.aborted
   ) {
     return primaryResponse;
   }
 
   return fetch(buildApiUrl(path, API_BASE_FALLBACK), init);
+}
+
+function shouldTryFallback(response: Response): boolean {
+  if (response.status === 404 || response.status === 502 || response.status === 503 || response.status === 504) {
+    return true;
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  return contentType.includes("text/html");
 }
 
 function createApiRequestInit(signal: AbortSignal): RequestInit {

@@ -25,3 +25,4 @@ dist-ssr
 
 .env
 
+VITE_REACT_APP_BACKEND_BASEURL=http://localhost:3000
