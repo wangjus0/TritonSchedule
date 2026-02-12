@@ -7,11 +7,34 @@ import { Weekday } from "@/types/calendar";
 import { toast } from "sonner";
 
 const API_KEY = import.meta.env.VITE_API_KEY ?? import.meta.env.API_KEY ?? "";
-const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? "/api" : "")).replace(/\/+$/, "");
-const API_BASE_FALLBACK = (import.meta.env.VITE_API_BASE_FALLBACK_URL ?? "").replace(/\/+$/, "");
+const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? "/api" : ""));
+const API_BASE_FALLBACK = normalizeApiBase(import.meta.env.VITE_API_BASE_FALLBACK_URL ?? "");
 
 function buildApiUrl(path: string, base = API_BASE): string {
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+function normalizeApiBase(rawBase: string): string {
+  const trimmedBase = rawBase.trim().replace(/\/+$/, "");
+  if (!trimmedBase) {
+    return "";
+  }
+
+  if (trimmedBase.startsWith("/")) {
+    return trimmedBase;
+  }
+
+  try {
+    const url = new URL(trimmedBase);
+    const pathname = url.pathname.replace(/\/+$/, "");
+    if (!pathname) {
+      url.pathname = "/api";
+      return url.toString().replace(/\/+$/, "");
+    }
+    return trimmedBase;
+  } catch {
+    return trimmedBase;
+  }
 }
 
 async function fetchApi(path: string, init: RequestInit): Promise<Response> {

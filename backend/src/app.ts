@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import express from "express";
+import cors from "cors";
 
 import courseRouter from "./routes/courseRouter.js";
 import rmpRouter from "./routes/rmpRouter.js";
@@ -11,6 +12,13 @@ dotenv.config();
 
 const app = express();
 
+const corsOrigin = process.env.CORS_ORIGIN?.trim();
+
+app.use(
+  cors({
+    origin: corsOrigin && corsOrigin.length > 0 ? corsOrigin : true,
+  })
+);
 app.use(express.json());
 app.use(requireApiSecret);
 

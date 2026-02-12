@@ -1,5 +1,5 @@
 export async function requireApiSecret(req: any, res: any, next: any) {
-  const expected = process.env.API_KEY;
+  const expected = (process.env.API_KEY ?? "").trim();
   const isCronRequest = req.headers["x-vercel-cron"] === "1";
   const isRefreshEndpoint = String(req.path).startsWith("/api/refresh");
 
@@ -8,9 +8,9 @@ export async function requireApiSecret(req: any, res: any, next: any) {
   }
 
   const authHeader = req.headers.authorization ?? "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
 
-  if (expected !== token) {
+  if (!expected || expected !== token) {
     return res.status(401).send({ Message: 'Not Authorized' });
   }
 

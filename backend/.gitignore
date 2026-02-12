@@ -11,3 +11,4 @@ api/*.js
 
 # Config
 package-lock.json
+.vercel
