@@ -14,9 +14,9 @@ const app = express();
 app.use(express.json());
 app.use(requireApiSecret);
 
-app.use("api/course", courseRouter);
-app.use("api/rmp", rmpRouter);
-app.use("api/refresh", refreshRouter);
-app.use("api/term", termRouter);
+app.use("/course", courseRouter);
+app.use("/rmp", rmpRouter);
+app.use("/refresh", refreshRouter);
+app.use("/term", termRouter);
 
 export default app;
