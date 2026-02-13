@@ -2,11 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
-  "functions": {
-    "api/**/*.ts": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "crons": [
     {
       "path": "/api/refresh",
