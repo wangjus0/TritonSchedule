@@ -29,11 +29,6 @@ app.use(
   })
 );
 
-// Handle OPTIONS requests before authentication middleware
-app.options('*', (req, res) => {
-  res.status(200).end();
-});
-
 app.use(express.json());
 app.use(requireApiSecret);
 
