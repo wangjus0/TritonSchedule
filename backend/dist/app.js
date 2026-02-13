@@ -9,7 +9,7 @@ import { requireApiSecret } from "./middleware/requireApiSecret.js";
 dotenv.config();
 const app = express();
 const allowedOrigins = [
-    "https://triton-schedule-alpha.vercel.app",
+    "https://tritonschedule.com",
     "http://localhost:8080",
 ];
 app.use(cors({
@@ -17,7 +17,6 @@ app.use(cors({
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
 }));
-app.options("*", cors());
 app.use(express.json());
 app.use(requireApiSecret);
 app.use("/course", courseRouter);
