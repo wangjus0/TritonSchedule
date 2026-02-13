@@ -13,6 +13,7 @@ const app = express();
 
 const allowedOrigins = [
   "https://tritonschedule.com",
+  "https://triton-schedule-alpha.vercel.app",
   "http://localhost:8080",
 ];
 
