@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node --env-file=.env dist/server.js",
-    "start:server": "node --env-file=.env dist/server.js"
+    "start": "node dist/server.js",
+    "start:server": "node dist/server.js"
   },
   "keywords": [],
   "author": "",
