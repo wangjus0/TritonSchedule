@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { CalendarEvent } from "@/types/calendar";
 
 interface CalendarContextType {
@@ -10,9 +10,45 @@ interface CalendarContextType {
 }
 
 const CalendarContext = createContext<CalendarContextType | undefined>(undefined);
+const CALENDAR_EVENTS_STORAGE_KEY = "calendarEvents";
+
+function loadStoredEvents(): CalendarEvent[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  const storedEvents = window.localStorage.getItem(CALENDAR_EVENTS_STORAGE_KEY);
+  if (!storedEvents) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(storedEvents) as CalendarEvent[];
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter((event) => {
+      return (
+        typeof event?.id === "string" &&
+        typeof event?.title === "string" &&
+        typeof event?.dayOfWeek === "string" &&
+        typeof event?.startTime === "string" &&
+        typeof event?.endTime === "string" &&
+        typeof event?.color === "string"
+      );
+    });
+  } catch {
+    return [];
+  }
+}
 
 export function CalendarProvider({ children }: { children: ReactNode }) {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>(() => loadStoredEvents());
+
+  useEffect(() => {
+    window.localStorage.setItem(CALENDAR_EVENTS_STORAGE_KEY, JSON.stringify(events));
+  }, [events]);
 
   const addEvent = (event: CalendarEvent) => {
     setEvents((prev) => [...prev, event]);

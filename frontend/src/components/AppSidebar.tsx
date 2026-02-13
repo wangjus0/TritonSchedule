@@ -15,7 +15,7 @@ export function AppSidebar() {
     <header className="sticky top-0 z-40 border-b border-sidebar-border/80 bg-sidebar/85 backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-[92rem] flex-col gap-2 px-3 py-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:gap-0 sm:py-0 sm:px-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/40 bg-primary/85 shadow-[0_10px_24px_hsl(var(--primary)/0.3)]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#7BA9ED] bg-[#5D97EA] shadow-[0_10px_24px_rgba(93,151,234,0.4)]">
             <TridentIcon className="h-5 w-5 text-primary-foreground [stroke-width:2.6]" />
           </div>
           <div className="leading-tight">
