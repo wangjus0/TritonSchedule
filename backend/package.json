@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/server.js",
-    "start:server": "node dist/server.js"
+    "build": "rm -rf dist && tsc",
+    "start": "node dist/src/server.js",
+    "start:server": "node dist/src/server.js"
   },
   "keywords": [],
   "author": "",
