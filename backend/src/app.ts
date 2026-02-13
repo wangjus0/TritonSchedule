@@ -7,7 +7,10 @@ import refreshRouter from "./routes/refreshRouter.js";
 import termRouter from "./routes/termRouter.js";
 import { requireApiSecret } from "./middleware/requireApiSecret.js";
 
-dotenv.config();
+// Only load .env file in development (Vercel uses environment variables configured in dashboard)
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 const app = express();
 
