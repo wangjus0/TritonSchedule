@@ -239,8 +239,7 @@ export default function SearchCourses() {
       try {
         const backendCourses = await searchBackendCourses(query, controller.signal, activeTerm);
         const mappedCourses = backendCourses.map(mapBackendCourseToCourse);
-        const coursesWithRmp = await hydrateCoursesWithRmp(mappedCourses, controller.signal);
-        setCoursesFromBackend(coursesWithRmp);
+        setCoursesFromBackend(mappedCourses);
         const resolvedSearchState = mappedCourses.length > 0 ? "success" : "not_found";
         setSearchState(resolvedSearchState);
         setLastFetchedQuery(query);
@@ -250,7 +249,7 @@ export default function SearchCourses() {
           JSON.stringify({
             query,
             term: normalizedTerm,
-            results: coursesWithRmp,
+            results: mappedCourses,
             searchState: resolvedSearchState,
           })
         );
@@ -853,102 +852,6 @@ async function searchBackendCourses(query: string, signal: AbortSignal, term: st
       : [];
 }
 
-async function hydrateCoursesWithRmp(courses: Course[], signal: AbortSignal): Promise<Course[]> {
-  const uniqueInstructors = Array.from(
-    new Set(
-      courses
-        .map((course) => course.instructor.trim())
-        .filter((name) => name.length > 0 && name.toLowerCase() !== "instructor tba")
-    )
-  );
-
-  const lookupEntries = await Promise.all(
-    uniqueInstructors.map(async (instructor) => {
-      const stats = await fetchRmpForInstructor(instructor, signal);
-      return [instructor, stats] as const;
-    })
-  );
-
-  const rmpLookup = new Map(lookupEntries);
-
-  return courses.map((course) => {
-    const stats = rmpLookup.get(course.instructor.trim());
-    if (!stats) {
-      return course;
-    }
-
-    const avgRating = Number(stats.avgRating);
-    const avgDiff = Number(stats.avgDiff);
-    const takeAgain = Number(stats.takeAgainPercent);
-
-    return {
-      ...course,
-      rmpRating: Number.isFinite(avgRating) && avgRating > 0 ? avgRating : undefined,
-      rmpAvgDifficulty: Number.isFinite(avgDiff) && avgDiff > 0 ? avgDiff : undefined,
-      rmpTakeAgain: Number.isFinite(takeAgain) && takeAgain >= 0 ? takeAgain : undefined,
-    };
-  });
-}
-
-function normalizeInstructorName(instructor: string): string {
-  return instructor
-    .replace(/[^\w\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function buildRmpTeacherQueryCandidates(instructor: string): string[] {
-  const normalized = normalizeInstructorName(instructor);
-  if (normalized.length === 0) {
-    return [];
-  }
-
-  const candidates = [normalized];
-  const tokens = normalized.split(" ").filter((token) => token.length > 0);
-  if (tokens.length > 1) {
-    candidates.push(tokens.slice().reverse().join(" "));
-  }
-
-  return Array.from(new Set(candidates.map((candidate) => candidate.toLowerCase())));
-}
-
-async function fetchRmpForInstructor(
-  instructor: string,
-  signal: AbortSignal
-): Promise<BackendRmpRecord | null> {
-  const candidates = buildRmpTeacherQueryCandidates(instructor);
-
-  for (const candidate of candidates) {
-    try {
-      const response = await fetchApi(
-        `/rmp?teacher=${encodeURIComponent(candidate)}`,
-        createApiRequestInit(signal)
-      );
-
-      if (response.status === 404 || response.status === 400) {
-        continue;
-      }
-
-      if (!response.ok) {
-        return null;
-      }
-
-      const payload = (await response.json()) as BackendRmpResponse;
-      const stats = Array.isArray(payload.Data) ? payload.Data[0] : undefined;
-      if (stats) {
-        return stats;
-      }
-    } catch (error) {
-      if ((error as Error).name === "AbortError") {
-        throw error;
-      }
-      return null;
-    }
-  }
-
-  return null;
-}
-
 type BackendSection = {
   Days?: string;
   Time?: string;
@@ -960,6 +863,7 @@ type BackendCourse = {
   Term?: string;
   Teacher?: string;
   Rating?: string;
+  rmp?: BackendRmpRecord | null;
   name?: string;
   term?: string;
   teacher?: string;
@@ -984,10 +888,6 @@ type BackendRmpRecord = {
   takeAgainPercent?: number | string;
 };
 
-type BackendRmpResponse = {
-  Data?: BackendRmpRecord[];
-};
-
 function mapBackendCourseToCourse(course: BackendCourse, index: number): Course {
   const lecture = Array.isArray(course.lecture)
     ? course.lecture[0]
@@ -1002,7 +902,11 @@ function mapBackendCourseToCourse(course: BackendCourse, index: number): Course 
   const name = course.Name ?? course.name ?? "Untitled Course";
   const term = course.Term ?? course.term ?? "Unknown";
   const teacher = course.Teacher ?? course.teacher ?? "Instructor TBA";
-  const rating = course.Rating ?? course.rating ?? "";
+  const rmp = course.rmp ?? null;
+  const avgRating = Number(rmp?.avgRating);
+  const avgDiff = Number(rmp?.avgDiff);
+  const takeAgain = Number(rmp?.takeAgainPercent);
+  const fallbackRating = Number(course.Rating ?? course.rating ?? "");
 
   return {
     id: `${name}-${term}-${index}`,
@@ -1011,7 +915,14 @@ function mapBackendCourseToCourse(course: BackendCourse, index: number): Course 
     schedule: lectureSchedule || "Schedule TBA",
     description: `Term: ${term}`,
     color: "hsl(210, 70%, 52%)",
-    rmpRating: Number.parseFloat(rating) || undefined,
+    rmpRating:
+      Number.isFinite(avgRating) && avgRating > 0
+        ? avgRating
+        : Number.isFinite(fallbackRating) && fallbackRating > 0
+          ? fallbackRating
+          : undefined,
+    rmpTakeAgain: Number.isFinite(takeAgain) && takeAgain >= 0 ? takeAgain : undefined,
+    rmpAvgDifficulty: Number.isFinite(avgDiff) && avgDiff > 0 ? avgDiff : undefined,
     discussionSections: discussions.map((section, sectionIndex) => ({
       id: `${index}-${sectionIndex}`,
       name: `Discussion ${sectionIndex + 1}`,
