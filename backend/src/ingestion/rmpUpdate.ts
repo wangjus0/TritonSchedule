@@ -1,8 +1,6 @@
-import dotenv from "dotenv";
 import cliProgress from "cli-progress";
 import { connectToDB } from "../services/connectToDB.js";
 import { Db } from "mongodb";
-import { insertDB } from "../services/insertDB.js";
 import {
   searchSchool,
   getProfessorRatingAtSchoolId,
