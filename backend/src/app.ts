@@ -17,6 +17,7 @@ const app = express();
 const allowedOrigins = [
   "https://tritonschedule.com",
   "https://triton-schedule-alpha.vercel.app",
+  "https://triton-schedule-jl29ml1fz-justin-wangs-projects-e5966906.vercel.app/",
   "http://localhost:8080",
 ];
 
