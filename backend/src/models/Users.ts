@@ -11,4 +11,4 @@ export const UserSchema: mongoose.Schema<User> = new mongoose.Schema({
   password: { type: String },
 })
 
-export const UserModel = mongoose.model<User>('User', UserSchema);
+export const UserModel = mongoose.model<User>('users', UserSchema);

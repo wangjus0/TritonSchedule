@@ -1,21 +1,43 @@
-import type { HydratedDocument } from "mongoose";
-import type { User } from "../models/Users.js";
-import { UserModel } from "../models/Users.js";
+import type { WithId } from "mongodb";
+import { connectToDB } from "./connectToDB.js";
 
-export async function register(user: HydratedDocument<User>) {
+type User = {
+  name: string;
+  password: string;
+};
+
+function getUsersCollectionName() {
+  return "users";
+}
+
+export async function register(user: User) {
+
+  const db = await connectToDB();
+  const usersCollection = db.collection<User>(getUsersCollectionName());
 
   try {
-    await UserModel.create(user);
+    const existing = await usersCollection.findOne({ name: user.name });
+    if (existing) {
+      throw new Error("User already exists");
+    }
+
+    await usersCollection.insertOne({
+      name: user.name,
+      password: user.password,
+    });
   } catch (error) {
     throw error;
   }
 
 }
 
-export async function login(user: HydratedDocument<User>) {
+export async function login(user: User): Promise<WithId<User> | null> {
+
+  const db = await connectToDB();
+  const usersCollection = db.collection<User>(getUsersCollectionName());
 
   try {
-    const foundUser = await UserModel.findOne({
+    const foundUser = await usersCollection.findOne({
       name: user.name,
       password: user.password
     });
@@ -25,5 +47,4 @@ export async function login(user: HydratedDocument<User>) {
   }
 
 }
-
 
