@@ -73,7 +73,7 @@ export async function scrapeCurrentPage(subject: string, term: string, page: Pag
         nonTestBucket == "SE" ||
         nonTestBucket == "LA"
       ) {
-        if (current.Teacher.length <= 0) {
+        if (current.Teacher.length <= 0 && nestedRows[9]) {
           current.Teacher = nestedRows[9];
           current.nameKey = normalizeTeacherKey(nestedRows[9]);
         }
@@ -122,7 +122,7 @@ export async function scrapeCurrentPage(subject: string, term: string, page: Pag
           };
         }
       } else if (nonTestBucket === "IT") {
-        if (current.Teacher.length <= 0) {
+        if (current.Teacher.length <= 0 && nestedRows[9]) {
           current.Teacher = nestedRows[9];
           current.nameKey = normalizeTeacherKey(nestedRows[9]);
         }

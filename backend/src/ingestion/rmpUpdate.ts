@@ -13,22 +13,33 @@ import { normalizeTeacherKey } from "../utils/normalizeTeacherKey.js";
 const schoolName = "University of California San Diego";
 
 export async function rmpUpdate(curTerm: string) {
-
   let searched = new Set<string>();
   const db: Db = await connectToDB();
-  let docs = await db.collection("courses").find({ Term: curTerm }).toArray();
+  const docs = await db.collection("courses").find({ Term: curTerm }).toArray();
+
+  // Build set of teacher name keys to query
+  for (const doc of docs) {
+    if (typeof doc.Teacher === 'string' && doc.Teacher.trim() !== '') {
+      const normalized = normalizeTeacherKey(doc.Teacher);
+      if (normalized.length > 0 && !searched.has(normalized)) {
+        searched.add(normalized);
+      }
+    }
+  }
+
+  if (searched.size === 0) {
+    return; // No teachers to look up
+  }
 
   const school = await searchSchool(schoolName);
 
-  // Add items to searched set 
-  for (const doc of docs) {
-
-    const normalized = normalizeTeacherKey(doc.Teacher);
-
-    if (normalized.length > 0 && !searched.has(normalized)) {
-      searched.add(normalized);
-    }
+  // If school not found, cannot fetch RMP data; exit early
+  if (!school || !Array.isArray(school) || school.length === 0) {
+    console.error(`School "${schoolName}" not found for RMP lookup`);
+    return;
   }
+
+  const schoolId = school[0].node.id;
 
   // Progress bar for visualization
   const rmpBar = new cliProgress.SingleBar(
@@ -41,13 +52,11 @@ export async function rmpUpdate(curTerm: string) {
 
   rmpBar.start(searched.size, 0, { name: "" });
 
-  // Call RMP API
+  // Call RMP API for each teacher
   for (const teacher of searched) {
-
     rmpBar.update({ name: teacher.trim() });
 
-    if (school !== undefined) {
-      const schoolId = school[0].node.id;
+    try {
       const search = await getProfessorRatingAtSchoolId(teacher, schoolId);
       const item: RMP = {
         avgRating: search.avgRating,
@@ -57,18 +66,19 @@ export async function rmpUpdate(curTerm: string) {
         nameKey: teacher.toLowerCase(),
       };
 
-      // Match course with RMP data
-      await db.collection("courses").updateOne(
+      // Update all course sections for this teacher
+      await db.collection("courses").updateMany(
         { nameKey: teacher },
         { $set: { rmp: item } }
-      )
-
+      );
+    } catch (error) {
+      console.error(`RMP lookup failed for teacher ${teacher}:`, error);
+      // Continue with next teacher
+    } finally {
+      rmpBar.increment();
     }
-
-    rmpBar.increment();
   }
 
   rmpBar.stop(); // Close TUI
-
   return;
 }

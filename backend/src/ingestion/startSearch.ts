@@ -198,7 +198,7 @@ const SUBJECT_CODES: string[] = [
 ];
 
 export async function startSearch(term: string) {
-  // Browser intialization
+  // Browser initialization
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
   const db: Db = await connectToDB();
@@ -212,103 +212,71 @@ export async function startSearch(term: string) {
 
   subjectBar.start(SUBJECT_CODES.length, 0, { code: "" });
 
-  // Scrape all subjects
-  for (const code of SUBJECT_CODES) {
-    subjectBar.update({ code: code.trim() });
-    await page.goto(
-      "https://act.ucsd.edu/scheduleOfClasses/scheduleOfClassesStudent.htm",
-      { waitUntil: "networkidle2" },
-    );
-    await page.waitForSelector("#selectedSubjects");
+  try {
+    // Scrape all subjects
+    for (const code of SUBJECT_CODES) {
+      subjectBar.update({ code: code.trim() });
+      await page.goto(
+        "https://act.ucsd.edu/scheduleOfClasses/scheduleOfClassesStudent.htm",
+        { waitUntil: "networkidle2" },
+      );
+      await page.waitForSelector("#selectedSubjects");
 
-    // Skip if subject code DOM item DNE
-    const selected = await page.select("select#selectedSubjects", code);
-    if (selected.length <= 0) {
-      continue;
-    }
-
-    await page.click("#socFacSubmit");
-    await page.waitForSelector("#socDisplayCVO");
-
-    // To determine the max # of pages
-    const pages = await page.evaluate(() => {
-      return Array.from(
-        document.querySelectorAll<HTMLAnchorElement>('a[href*="page="]'),
-      )
-        .map((a) => a.getAttribute("href"))
-        .filter((h): h is string => h !== null);
-    });
-
-    let lastPage: number | null = null;
-
-    if (pages.length > 0) {
-      const lastHref = pages[pages.length - 1];
-      const pageParam = new URL(
-        lastHref,
-        "https://example.com",
-      ).searchParams.get("page");
-
-      lastPage = pageParam ? parseInt(pageParam, 10) : null;
-    }
-
-    lastPage = lastPage != null ? lastPage + 1 : 0;
-
-    let currentPage = 1;
-
-    while (currentPage < lastPage) {
-      // Scrapes contents of current page
-      let curPageContent = await scrapeCurrentPage(code, term, page);
-
-      if (curPageContent.length <= 0) {
-        break;
+      // Skip if subject code DOM item DNE
+      const selected = await page.select("select#selectedSubjects", code);
+      if (selected.length <= 0) {
+        continue;
       }
 
-      /*
-       * Connects, and inserts document to DB
-       * Note: Might block if you don't add IP to DB allowed list
-       */
-      await insertDB(db, curPageContent, "courses");
+      await page.click("#socFacSubmit");
+      await page.waitForSelector("#socDisplayCVO");
 
-      currentPage += 1;
+      // Process pages: always scrape the first page, then attempt to navigate to next pages
+      let currentPage = 1;
+      while (true) {
+        const curPageContent = await scrapeCurrentPage(code, term, page);
 
-      /**
-       * Checks if next page button exists
-       *
-       * @return true if exists, false if doesn't
-       */
-      let didClick = await page.evaluate((nextPage) => {
-        const links = Array.from(
-          document.querySelectorAll<HTMLAnchorElement>(
-            'a[href*="scheduleOfClassesStudentResult.htm?page="]',
-          ),
-        );
-
-        const nextLink = links.find(
-          (a) => a.textContent?.trim() === String(nextPage),
-        );
-
-        if (!nextLink) {
-          return false;
+        if (curPageContent.length > 0) {
+          await insertDB(db, curPageContent, "courses");
         }
 
-        nextLink.click();
-        return true;
-      }, currentPage);
+        // Attempt to go to the next page
+        const nextPage = currentPage + 1;
+        const didClick = await page.evaluate((targetPage) => {
+          const links = Array.from(
+            document.querySelectorAll<HTMLAnchorElement>(
+              'a[href*="scheduleOfClassesStudentResult.htm?page="]',
+            ),
+          );
 
-      // Waits for page to load if clicked
-      if (didClick) {
+          const nextLink = links.find(
+            (a) => a.textContent?.trim() === String(targetPage),
+          );
+
+          if (!nextLink) {
+            return false;
+          }
+
+          nextLink.click();
+          return true;
+        }, nextPage);
+
+        if (!didClick) {
+          break;
+        }
+
         await page.waitForNavigation({ waitUntil: "networkidle0" });
+        currentPage = nextPage;
       }
+
+      subjectBar.increment();
     }
 
-    subjectBar.increment();
+    await rmpUpdate(term);
+  } finally {
+    subjectBar.stop(); // Close TUI
+    await browser.close(); // Ensure browser closes even on errors
   }
-
-  await rmpUpdate(term);
-
-  subjectBar.stop(); // Close TUI
-
-  browser.close(); // To close the browser instance
 
   return;
 }
