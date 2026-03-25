@@ -32,7 +32,6 @@ app.use(
 );
 
 app.use(express.json());
-app.use(express.static(path.join(process.cwd(), "public")));
 app.use(requireApiSecret);
 
 app.use("/course", courseRouter);
