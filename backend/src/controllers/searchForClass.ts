@@ -28,9 +28,5 @@ export async function searchForClass(req: any, res: any) {
 
   const queryResults = await db.collection("courses").find(query).toArray();
 
-  if (queryResults.length <= 0) {
-    return res.status(404).send('Item not found');
-  }
-
   return res.json({ data: queryResults });
 }
