@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { disconnectFromDB } from "../services/disconnectFromDB";
+import { disconnectFromDB } from "../services/disconnectFromDB.js";
 import { MongoClient } from "mongodb";
 
 // Mock the connectToDB module

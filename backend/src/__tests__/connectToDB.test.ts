@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { shouldRetry, getMongoConfig } from "../services/connectToDB";
+import { shouldRetry, getMongoConfig } from "../services/connectToDB.js";
 import { MongoNetworkError } from "mongodb";
 
 describe("connectToDB helpers", () => {
@@ -51,8 +51,7 @@ describe("connectToDB helpers", () => {
     });
 
     it("should throw when MONGO_URI is missing", () => {
-      const envWithoutURI = { ...process.env, DB_NAME: "testdb" };
-      delete envWithoutURI.MONGO_URI;
+      const envWithoutURI = { ...process.env, DB_NAME: "testdb", MONGO_URI: undefined } as typeof process.env;
       const original = process.env;
       process.env = envWithoutURI;
       try {

@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { requireApiSecret } from "../middleware/requireApiSecret";
+import { requireApiSecret } from "../middleware/requireApiSecret.js";
 
 describe("requireApiSecret", () => {
   let mockReq: any;
