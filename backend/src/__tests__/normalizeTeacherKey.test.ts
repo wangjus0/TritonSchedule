@@ -1,4 +1,4 @@
-import { normalizeTeacherKey } from '../utils/normalizeTeacherKey';
+import { normalizeTeacherKey } from '../utils/normalizeTeacherKey.js';
 
 describe('normalizeTeacherKey', () => {
   it('should trim whitespace', () => {
