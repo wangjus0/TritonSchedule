@@ -7,6 +7,7 @@ describe("insertDB", () => {
   });
 
   it("should insert multiple documents into collection", async () => {
+    // @ts-ignore - mocking insertMany return type
     const mockInsertMany = jest.fn().mockResolvedValue({ insertedCount: 3 });
     const mockCollection = jest.fn().mockReturnValue({
       insertMany: mockInsertMany,
@@ -28,6 +29,7 @@ describe("insertDB", () => {
   });
 
   it("should return undefined on success", async () => {
+    // @ts-ignore - mocking insertMany return type
     const mockInsertMany = jest.fn().mockResolvedValue({ insertedCount: 1 });
     const mockCollection = jest.fn().mockReturnValue({
       insertMany: mockInsertMany,
@@ -42,6 +44,7 @@ describe("insertDB", () => {
   });
 
   it("should handle empty array", async () => {
+    // @ts-ignore - mocking insertMany return type
     const mockInsertMany = jest.fn().mockResolvedValue({ insertedCount: 0 });
     const mockCollection = jest.fn().mockReturnValue({
       insertMany: mockInsertMany,
@@ -56,6 +59,7 @@ describe("insertDB", () => {
   });
 
   it("should work with different collection names", async () => {
+    // @ts-ignore - mocking insertMany return type
     const mockInsertMany = jest.fn().mockResolvedValue({ insertedCount: 1 });
     const mockCollection = jest.fn().mockReturnValue({
       insertMany: mockInsertMany,
@@ -70,6 +74,7 @@ describe("insertDB", () => {
   });
 
   it("should pass through any content object structure", async () => {
+    // @ts-ignore - mocking insertMany return type
     const mockInsertMany = jest.fn().mockResolvedValue({ insertedCount: 2 });
     const mockCollection = jest.fn().mockReturnValue({
       insertMany: mockInsertMany,
