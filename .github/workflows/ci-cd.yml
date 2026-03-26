@@ -168,8 +168,8 @@ jobs:
           cd frontend
           # Validate tsconfig.json
           npx tsc --showConfig --pretty false > /dev/null || { echo "❌ Invalid tsconfig.json"; exit 1; }
-          # Validate vite.config.ts
-          npx vite --mode production build --dry-run || { echo "❌ Invalid vite.config.ts"; exit 1; }
+          # Validate vite.config.ts (use --dry-run, not --dryRun)
+          npx vite build --dry-run || { echo "❌ Invalid vite.config.ts"; exit 1; }
           # Validate tailwind config
           npx tailwindcss -i ./src/index.css -o ./dist/output.css --dry-run || true
           echo "✅ Frontend configs valid"
