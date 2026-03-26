@@ -7,7 +7,8 @@ describe("cn utility", () => {
   });
 
   it("should handle conditional classes", () => {
-    const result = true ? "active" : "";
+    const isActive = true;
+    const result = isActive ? "active" : "";
     expect(cn(result, "static")).toBe("active static");
   });
 
