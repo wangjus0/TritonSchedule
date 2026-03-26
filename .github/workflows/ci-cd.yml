@@ -16,23 +16,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install gitleaks
-        run: |
-          curl -sSfL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -o /usr/local/bin/gitleaks
-          chmod +x /usr/local/bin/gitleaks
-
-      - name: Run gitleaks secret scanning
-        run: |
-          gitleaks detect --source . --report-path gitleaks-report.json --report-format json || true
-          # Fail if severity is high or critical
-          if [ -f gitleaks-report.json ]; then
-            HIGH_CRIT=$(jq '[.[] | select(.RuleID != "generic-secret" and .Severity | test("HIGH|CRITICAL"))] | length' gitleaks-report.json)
-            if [ "$HIGH_CRIT" -gt 0 ]; then
-              echo "❌ Found $HIGH_CRIT high/critical potential secrets"
-              cat gitleaks-report.json
-              exit 1
-            fi
-          fi
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Job 2: Frontend CI
   frontend:
@@ -92,7 +79,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd backend
-          npm ci
+          npm install
 
       - name: Run ESLint
         run: |
@@ -171,6 +158,11 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
       - name: Validate frontend config files
         run: |
           cd frontend
@@ -181,6 +173,11 @@ jobs:
           # Validate tailwind config
           npx tailwindcss -i ./src/index.css -o ./dist/output.css --dry-run || true
           echo "✅ Frontend configs valid"
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm ci
 
       - name: Validate backend config files
         run: |
