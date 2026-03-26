@@ -23,7 +23,7 @@ let connecting: Promise<Db> | null = null;
 
 const MAX_CONNECTION_ATTEMPTS = 2;
 
-function getMongoConfig() {
+export function getMongoConfig() {
   const dbName = process.env.DB_NAME;
   const uri = process.env.MONGO_URI;
 
@@ -37,7 +37,7 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function shouldRetry(error: unknown) {
+export function shouldRetry(error: unknown) {
   if (!(error instanceof MongoNetworkError)) return false;
 
   const message = error.message.toLowerCase();

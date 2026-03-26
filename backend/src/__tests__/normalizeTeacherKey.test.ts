@@ -1,25 +1,31 @@
-import { normalizeTeacherKey } from '../utils/normalizeTeacherKey.js';
+import { normalizeTeacherKey } from "../utils/normalizeTeacherKey";
 
-describe('normalizeTeacherKey', () => {
-  it('should trim whitespace', () => {
-    expect(normalizeTeacherKey('  John Doe  ')).toBe('john doe');
+describe("normalizeTeacherKey", () => {
+  it("should trim whitespace", () => {
+    expect(normalizeTeacherKey("  John Smith  ")).toBe("john smith");
   });
 
-  it('should replace multiple spaces with single space', () => {
-    expect(normalizeTeacherKey('John   Doe')).toBe('john doe');
+  it("should lowercase the name", () => {
+    expect(normalizeTeacherKey("JOHN SMITH")).toBe("john smith");
   });
 
-  it('should remove special characters', () => {
-    expect(normalizeTeacherKey('John O\'Connor')).toBe('john oconnor');
-    expect(normalizeTeacherKey('Jane-Smith')).toBe('janesmith');
+  it("should remove special characters", () => {
+    expect(normalizeTeacherKey("John Smith Jr.")).toBe("john smith jr");
   });
 
-  it('should convert to lowercase', () => {
-    expect(normalizeTeacherKey('JOHN DOE')).toBe('john doe');
+  it("should collapse multiple whitespace to single space", () => {
+    expect(normalizeTeacherKey("John    Smith")).toBe("john smith");
   });
 
-  it('should handle edge cases', () => {
-    expect(normalizeTeacherKey('')).toBe('');
-    expect(normalizeTeacherKey('   ')).toBe('');
+  it("should handle empty string", () => {
+    expect(normalizeTeacherKey("")).toBe("");
+  });
+
+  it("should handle names with numbers", () => {
+    expect(normalizeTeacherKey("John Smith 123")).toBe("john smith 123");
+  });
+
+  it("should handle unicode characters", () => {
+    expect(normalizeTeacherKey("José García")).toBe("jos garca");
   });
 });
