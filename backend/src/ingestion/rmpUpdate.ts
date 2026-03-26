@@ -14,9 +14,9 @@ const schoolName = "University of California San Diego";
 
 export async function rmpUpdate(curTerm: string) {
 
-  let searched = new Set<string>();
+  const searched = new Set<string>();
   const db: Db = await connectToDB();
-  let docs = await db.collection("courses").find({ Term: curTerm }).toArray();
+  const docs = await db.collection("courses").find({ Term: curTerm }).toArray();
 
   const school = await searchSchool(schoolName);
 

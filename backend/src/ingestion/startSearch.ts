@@ -257,7 +257,7 @@ export async function startSearch(term: string) {
 
     while (currentPage < lastPage) {
       // Scrapes contents of current page
-      let curPageContent = await scrapeCurrentPage(code, term, page);
+      const curPageContent = await scrapeCurrentPage(code, term, page);
 
       if (curPageContent.length <= 0) {
         break;
@@ -276,7 +276,7 @@ export async function startSearch(term: string) {
        *
        * @return true if exists, false if doesn't
        */
-      let didClick = await page.evaluate((nextPage) => {
+      const didClick = await page.evaluate((nextPage) => {
         const links = Array.from(
           document.querySelectorAll<HTMLAnchorElement>(
             'a[href*="scheduleOfClassesStudentResult.htm?page="]',
