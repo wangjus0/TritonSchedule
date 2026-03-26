@@ -3,7 +3,8 @@
     "baseUrl": ".",
     "target": "esnext",
     "types": [
-      "node"
+      "node",
+      "jest"
     ],
     "module": "nodenext",
     "rootDir": ".",
