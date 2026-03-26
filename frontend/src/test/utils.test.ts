@@ -8,7 +8,8 @@ describe("cn utility", () => {
 
   it("should handle conditional classes", () => {
     const condition = true;
-    expect(cn(condition && "active", "static")).toBe("active static");
+    const result = condition ? "active" : "";
+    expect(cn(result, "static")).toBe("active static");
   });
 
   it("should handle falsy values", () => {
