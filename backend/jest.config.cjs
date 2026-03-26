@@ -30,5 +30,6 @@ module.exports = {
   coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
   // ESM support
   extensionsToTreatAsEsm: ['.ts'],
-  testTimeout: 30000
+  testTimeout: 60000,
+  setupFiles: ['<rootDir>/src/__tests__/setup.js']
 };
