@@ -7,13 +7,12 @@ describe("cn utility", () => {
   });
 
   it("should handle conditional classes", () => {
-    const condition = true;
-    const result = condition ? "active" : "";
+    const result = true ? "active" : "";
     expect(cn(result, "static")).toBe("active static");
   });
 
   it("should handle falsy values", () => {
-    expect(cn("foo", false && "bar", "baz")).toBe("foo baz");
+    expect(cn("foo", "baz")).toBe("foo baz");
   });
 
   it("should handle empty strings", () => {
