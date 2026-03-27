@@ -1,7 +1,6 @@
 import dotenv from "dotenv";
 import cors from "cors";
 import express from "express";
-import path from "path";
 import courseRouter from "./routes/courseRouter.js";
 import rmpRouter from "./routes/rmpRouter.js";
 import refreshRouter from "./routes/refreshRouter.js";
@@ -32,7 +31,7 @@ app.use(
 );
 
 app.use(express.json());
-app.use(express.static(path.join(process.cwd(), "public")));
+// Note: Static files served separately via Vercel frontend deployment
 app.use(requireApiSecret);
 
 app.use("/course", courseRouter);
