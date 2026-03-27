@@ -32,6 +32,12 @@ app.use(
 
 app.use(express.json());
 // Note: Static files served separately via Vercel frontend deployment
+
+// Health check endpoint for uptime monitoring (no auth required)
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 app.use(requireApiSecret);
 
 app.use("/course", courseRouter);
