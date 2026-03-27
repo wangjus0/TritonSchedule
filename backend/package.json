@@ -49,7 +49,6 @@
     "mongodb": "^7.0.0",
     "puppeteer": "^24.32.1",
     "ratemyprofessor-api": "^1.0.1",
-    "xmldom": "^0.6.0",
-    "yarn": "^1.22.22"
+    "xmldom": "^0.6.0"
   }
 }
