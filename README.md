@@ -1,184 +1,126 @@
 # TritonSchedule
 
-TritonSchedule is a full-stack web application for [describe purpose]. It consists of a React frontend and a Node.js/Express backend.
+[![CI/CD](https://github.com/wangjus0/tritonschedule/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/wangjus0/tritonschedule/actions/workflows/ci-cd.yml)
+[![License: ISC](https://img.shields.io/badge/License-ISC-green.svg)](https://opensource.org/licenses/ISC)
 
-## Architecture
+> *Smart course scheduling for UCSD students — build your perfect quarter without the stress.*
 
-- **Frontend**: React + TypeScript + Vite + TailwindCSS + shadcn/ui
-- **Backend**: Node.js + Express + TypeScript + MongoDB
-- **Testing**: Vitest (Frontend), Jest (Backend)
-- **Linting**: ESLint
-- **CI/CD**: GitHub Actions
+---
 
-## Getting Started
+## 🌟 Why TritonSchedule Exists
 
-### Prerequisites
+Planning your courses at UCSD shouldn't feel like solving a puzzle with missing pieces. Between navigating complex prerequisites, finding open sections, and balancing your workload, students spend hours just trying to figure out what to take next.
+
+**TritonSchedule solves this.**
+
+We built a data-driven platform that brings together everything you need to plan your quarter — in one place, in minutes instead of hours.
+
+---
+
+## 🤔 What Problem We Solve
+
+UCSD students face real challenges when scheduling:
+
+- **Information scattered across multiple sources** — WebReg, catalog descriptions, Reddit threads, RateMyProfessor — it's fragmented and time-consuming
+- **No visibility into section availability** — You refresh WebReg hoping for open spots, with no sense of trends or patterns
+- **Hard to predict course difficulty** — Credits don't tell the whole story; how do you know if a course will crush you?
+- **No personalized recommendations** — Generic degree requirements don't account for your specific goals, strengths, or interests
+
+**The result:** Students either overcommit, under-challenge themselves, or waste precious time hunting down information.
+
+---
+
+## 💡 The TritonSchedule Solution
+
+TritonSchedule aggregates high-impact academic resources into a single, intuitive interface so you can:
+
+- **See the full picture** — Course data, professor ratings, section trends, and prerequisite chains — all in one view
+- **Make informed decisions** — Real insights from student experiences, not just course titles and unit counts
+- **Plan with confidence** — Know what's available, what's challenging, and what fits your goals before you register
+
+Think of it as your personal course scheduling assistant — minus the guesswork.
+
+---
+
+## ✨ What You Get
+
+- **Centralized Course Data** — No more tab-hopping. Find courses, sections, and details without leaving the app.
+- **Prerequisite Visualization** — See exactly what's required before you can take a course — plan your entire degree path, not just next quarter.
+- **Open Section Tracking** — Spot available seats at a glance — never again wonder if that waitlist will open up.
+- **Student-Driven Insights** — Leverage community knowledge to understand what courses are really like — from workload to grading to hidden gems.
+- **Modern, Mobile-Friendly Interface** — Plan your courses on your phone, tablet, or laptop — anywhere you have internet.
+
+---
+
+## 🚀 Get Started
+
+### Quick Setup
+
+```bash
+# Clone the project
+git clone https://github.com/wangjus0/tritonschedule.git
+cd tritonschedule
+
+# Start the backend
+cd backend
+npm ci
+npm run build
+npm start
+
+# In a new terminal, start the frontend
+cd frontend
+npm ci
+npm run dev
+```
+
+That's it! Open `http://localhost:5173` in your browser and start planning.
+
+### Requirements
 
 - Node.js 22+
 - MongoDB (local or Atlas)
 - npm
 
-### Installation
+---
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/wangjus0/tritonschedule.git
-   cd tritonschedule
-   ```
+## 📸 See It In Action
 
-2. Install backend dependencies:
-   ```bash
-   cd backend
-   npm ci
-   cd ..
-   ```
+*(Screenshots and demos coming soon)*
 
-3. Install frontend dependencies:
-   ```bash
-   cd frontend
-   npm ci
-   cd ..
-   ```
+The interface is designed to be clean and intuitive — search for a course, see open sections, check prerequisites, and add them to your plan. We believe you should spend minutes, not hours, on course planning.
 
-4. Set up environment variables:
-   ```bash
-   # Backend
-   cp backend/.env.example backend/.env
-   # Edit backend/.env with your values:
-   # MONGO_URI=your_mongodb_connection_string
-   # DB_NAME=your_database_name
-   # API_KEY=your_api_key
+---
 
-   # Frontend
-   cp frontend/.env.example frontend/.env
-   # Edit frontend/.env with your values:
-   # VITE_API_BASE_URL=http://localhost:3001
-   # VITE_API_BASE_FALLBACK_URL=
-   # VITE_API_KEY=your_frontend_api_key
-   ```
+## 🛠️ Built With
 
-5. Build and run the backend:
-   ```bash
-   cd backend
-   npm run build
-   npm start
-   # Backend runs on http://localhost:3001 by default
-   ```
+- **Frontend:** React + TypeScript + Vite + TailwindCSS + shadcn/ui
+- **Backend:** Node.js + Express + TypeScript + MongoDB
+- **Testing:** Vitest (Frontend), Jest (Backend)
 
-6. In a new terminal, run the frontend:
-   ```bash
-   cd frontend
-   npm run dev
-   # Frontend runs on http://localhost:5173
-   ```
+*Why this stack? We chose modern, type-safe technologies to ensure reliability and maintainability — so the tool you depend on just works.*
 
-## Development Commands
+---
 
-### Backend (in `backend/` directory)
+## 🤝 Contribute
 
-- `npm run build` - Compile TypeScript to JavaScript (output in `dist/`)
-- `npm start` - Start the production server (runs from `dist/`)
-- `npm run lint` - Run ESLint to check code quality
-- `npm run lint:fix` - Run ESLint and automatically fix issues
-- `npm test` - Run Jest tests with coverage
-- `npm run test:watch` - Run Jest in watch mode
-- `npm run typecheck` - Run TypeScript compiler without emitting files
+We believe TritonSchedule gets better when students build it together.
 
-### Frontend (in `frontend/` directory)
+Here's how you can help:
 
-- `npm run dev` - Start Vite development server with HMR
-- `npm run build` - Build for production
-- `npm run build:dev` - Build in development mode
-- `npm run lint` - Run ESLint
-- `npm run test` - Run Vitest with coverage
-- `npm run test:watch` - Run Vitest in watch mode
-- `npm run preview` - Preview production build locally
+1. **Fork** the repository
+2. **Create a feature branch** for your idea
+3. **Make your changes** — and add tests if possible
+4. **Ensure CI passes** (we run lint, type check, and tests on every PR)
+5. **Open a Pull Request** — we'll review and get back to you quickly
 
-## Environment Variables
+Have ideas or found a bug? Open an issue or start a discussion. We'd love to hear from you.
 
-### Backend (`.env`)
+---
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `MONGO_URI` | MongoDB connection string | Yes |
-| `DB_NAME` | Database name | Yes |
-| `API_KEY` | API key for authentication | Yes |
+## 📜 License
 
-### Frontend (`.env`)
+ISC License — free to use, modify, and distribute.
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `VITE_API_BASE_URL` | Primary API endpoint URL (e.g., http://localhost:3001) | Yes |
-| `VITE_API_BASE_FALLBACK_URL` | Fallback API endpoint URL (optional) | No |
-| `VITE_API_KEY` | Frontend API key for authenticated requests | Yes |
+---
 
-## CI/CD
-
-This repository uses GitHub Actions for continuous integration. The pipeline:
-
-1. ✅ **Secret Scanning**: Detects potential secrets using gitleaks
-2. ✅ **Linting**: ESLint on both frontend and backend
-3. ✅ **Type Checking**: TypeScript compiler with `--noEmit`
-4. ✅ **Testing**: Jest/Vitest with ≥80% line coverage enforcement
-5. ✅ **Coverage Reports**: Uploaded to Codecov
-6. ✅ **Config Validation**: Validates TypeScript, Vite, and Tailwind configs
-7. ✅ **Env Doc Validation**: Ensures all `.env.example` variables are documented in this README
-
-### CI Status Badge
-
-[![CI/CD](https://github.com/wangjus0/tritonschedule/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/wangjus0/tritonschedule/actions/workflows/ci-cd.yml)
-
-## Project Structure
-
-```
-tritonschedule/
-├── .github/
-│   └── workflows/
-│       └── ci-cd.yml        # GitHub Actions CI/CD pipeline
-├── backend/
-│   ├── src/
-│   │   ├── controllers/
-│   │   ├── ingestion/
-│   │   ├── middleware/
-│   │   ├── models/
-│   │   ├── routes/
-│   │   ├── services/
-│   │   └── utils/
-│   ├── __tests__/
-│   │   └── example.test.ts
-│   ├── .env.example
-│   ├── eslint.config.js
-│   ├── jest.config.js
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── vercel.json
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── lib/
-│   │   ├── pages/
-│   │   └── test/
-│   │       └── example.test.ts
-│   ├── .env.example
-│   ├── eslint.config.js
-│   ├── index.html
-│   ├── package.json
-│   ├── tailwind.config.ts
-│   ├── tsconfig.app.json
-│   ├── tsconfig.json
-│   ├── vercel.json
-│   └── vitest.config.ts
-└── README.md
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes with tests
-4. Ensure CI passes (lint, type check, tests)
-5. Submit a Pull Request
-
-## License
-
-ISC
+*Made with 🎓 by UCSD students, for UCSD students.*
