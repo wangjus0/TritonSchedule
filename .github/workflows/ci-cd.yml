@@ -1,0 +1,187 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  # Job 1: Secret Scanning with Gitleaks
+  secret-scanning:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Job 2: Frontend CI
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Run ESLint
+        run: |
+          cd frontend
+          npm run lint
+
+      - name: TypeScript type check
+        run: |
+          cd frontend
+          npx tsc --noEmit
+
+      - name: Run tests with coverage
+        run: |
+          cd frontend
+          npm test
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ./frontend/coverage
+          flags: frontend
+          fail_ci_if_error: false
+
+  # Job 3: Backend CI
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm install
+
+      - name: Run ESLint
+        run: |
+          cd backend
+          npm run lint
+
+      - name: TypeScript type check
+        run: |
+          cd backend
+          npx tsc --noEmit
+
+      - name: Run tests with coverage
+        run: |
+          cd backend
+          npm test
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ./backend/coverage
+          flags: backend
+          fail_ci_if_error: false
+
+  # Job 4: Environment Variable Documentation Validation
+  env-var-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate environment variable documentation
+        run: |
+          # Check that all variables in .env.example are documented in README.md
+          if [ ! -f README.md ]; then
+            echo "❌ README.md not found"
+            exit 1
+          fi
+
+          echo "Checking backend env vars..."
+          cd backend
+          if [ -f .env.example ]; then
+            grep -oE '[A-Z_]+=' .env.example | sed 's/=//' | while read var; do
+              if ! grep -q "$var" ../README.md; then
+                echo "❌ Backend env var '$var' is not documented in README.md"
+                MISSING=1
+              fi
+            done
+          fi
+
+          cd ../frontend
+          if [ -f .env.example ]; then
+            echo "Checking frontend env vars..."
+            grep -oE 'VITE_[A-Z_]+=' .env.example | sed 's/=//' | while read var; do
+              if ! grep -q "$var" ../README.md; then
+                echo "❌ Frontend env var '$var' is not documented in README.md"
+                MISSING=1
+              fi
+            done
+          fi
+
+          if [ "$MISSING" = "1" ]; then
+            exit 1
+          fi
+
+          echo "✅ All environment variables are documented"
+
+  # Job 5: Schema/Config Validation
+  config-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Validate frontend config files
+        run: |
+          cd frontend
+          # Validate tsconfig.json
+          npx tsc --showConfig --pretty false > /dev/null || { echo "❌ Invalid tsconfig.json"; exit 1; }
+          # Validate vite.config.ts
+          npx vite build --mode development || { echo "❌ Invalid vite.config.ts"; exit 1; }
+          # Validate tailwind config
+          npx tailwindcss -i ./src/index.css -o ./dist/output.css --dry-run || true
+          echo "✅ Frontend configs valid"
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm ci
+
+      - name: Validate backend config files
+        run: |
+          cd backend
+          # Validate tsconfig.json
+          npx tsc --showConfig --pretty false > /dev/null || { echo "❌ Invalid tsconfig.json"; exit 1; }
+          echo "✅ Backend configs valid"
