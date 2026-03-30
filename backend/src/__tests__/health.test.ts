@@ -9,7 +9,6 @@ import { describe, it, expect, jest, afterAll, beforeAll } from '@jest/globals';
 import request from 'supertest';
 import type { Request, Response } from 'express';
 
-jest.mock('../src/database', () => ({ connectToDB: jest.fn(() => Promise.resolve(true)) }));
 
 // Dynamic imports to ensure mock is registered before module loads
 const [app, healthRouter, healthControllerModule] = await Promise.all([
