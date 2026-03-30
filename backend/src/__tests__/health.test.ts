@@ -12,6 +12,13 @@ import request from 'supertest';
 import express, { type Request, type Response } from 'express';
 import dotenv from 'dotenv';
 
+// Mock connectToDB at module level so database checks succeed without real MongoDB
+jest.mock('../services/connectToDB.js', () => ({
+  connectToDB: jest.fn(() => Promise.resolve({
+    admin: () => ({ command: async () => ({ ok: 1 }) }),
+  })),
+}));
+
 // Import the Express app and health router/controller
 import app from '../app.js';
 import healthRouter from '../routes/healthRouter.js';
