@@ -52,6 +52,24 @@ Think of it as your personal course scheduling assistant — minus the guesswork
 
 ---
 
+## 📝 Environment Variables
+
+### Backend (.env)
+Create a `.env` file in the `backend` directory with the following variables:
+
+- `MONGO_URI` – MongoDB connection string (e.g., `mongodb://localhost:27017` or Atlas URI)
+- `DB_NAME` – Database name (e.g., `tritonschedule`)
+- `API_KEY` – Secret key for API authentication
+
+### Frontend (.env)
+Create a `.env` file in the `frontend` directory (Vite requires `VITE_` prefix):
+
+- `VITE_API_BASE_URL` – Backend API URL (e.g., `http://localhost:3000`)
+- `VITE_API_BASE_FALLBACK_URL` – Fallback API URL if primary fails
+- `VITE_API_KEY` – API key for frontend requests
+
+See `.env.example` files in each directory for exact names.
+
 ## 🚀 Get Started
 
 ### Quick Setup
