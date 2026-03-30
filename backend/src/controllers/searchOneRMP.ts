@@ -1,7 +1,8 @@
 import { connectToDB } from "../services/connectToDB.js";
 import { normalizeTeacherKey } from "../utils/normalizeTeacherKey.js";
+import type { Request, Response } from "express";
 
-export async function searchOneRMP(req: any, res: any) {
+export async function searchOneRMP(req: Request, res: Response) {
 
   const db = await connectToDB();
 
