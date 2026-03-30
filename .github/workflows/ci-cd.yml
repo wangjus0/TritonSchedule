@@ -6,10 +6,27 @@ on:
   pull_request:
     branches: [main, master]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  COVERAGE_THRESHOLD: 80
+
 jobs:
-  # Job 1: Secret Scanning with Gitleaks
+  # ── Stage 1: Security & Secrets ────────────────────────────────────────────
   secret-scanning:
+    name: Secret Scanning
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,9 +38,48 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Job 2: Frontend CI
-  frontend:
+  # ── Stage 2: Lint & Type Check (Parallel Matrix) ─────────────────────────
+  lint-and-types:
+    name: Lint & Type Check (${{ matrix.part }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - part: frontend
+            dir: frontend
+            lockfile: frontend/package-lock.json
+          - part: backend
+            dir: backend
+            lockfile: backend/package-lock.json
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ matrix.lockfile }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+        working-directory: ./${{ matrix.dir }}
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+        working-directory: ./${{ matrix.dir }}
+
+  # ── Stage 3: Security Scanning ─────────────────────────────────────────────
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -31,157 +87,226 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: ./frontend
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: ./backend
+
+      - name: Run npm audit (frontend)
+        run: npm audit --audit-level=moderate
+        working-directory: ./frontend
+
+      - name: Run npm audit (backend)
+        run: npm audit --audit-level=moderate
+        working-directory: ./backend
+
+      - name: Run Semgrep SAST
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >
+            auto
+            p/security-audit
+            p/secrets
+          upload-toSarif: ${{ github.event_name == 'pull_request' }}
+
+      - name: Run Trivy vulnerability scanner (filesystem)
+        uses: aquasecurity/trivy-action@0.19.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # ── Stage 4: Unit Tests with Coverage Gate ─────────────────────────────────
+  unit-tests:
+    name: Unit Tests (${{ matrix.part }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - part: frontend
+            dir: frontend
+            lockfile: frontend/package-lock.json
+            test-cmd: npm test
+            coverage-dir: ./frontend/coverage
+          - part: backend
+            dir: backend
+            lockfile: backend/package-lock.json
+            test-cmd: npm test
+            coverage-dir: ./backend/coverage
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ matrix.lockfile }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: ${{ matrix.test-cmd }}
+        working-directory: ./${{ matrix.dir }}
+        env:
+          CI: 'true'
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ${{ matrix.coverage-dir }}
+          flags: ${{ matrix.part }}
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Enforce coverage threshold
+        run: |
+          echo "Checking coverage thresholds (minimum $COVERAGE_THRESHOLD%)..."
+          if [ -f "${{ matrix.coverage-dir }}/coverage-summary.json" ]; then
+            TOTAL=$(node -e "
+              const d = require('./${{ matrix.coverage-dir }}/coverage-summary.json');
+              const total = d.total;
+              const pct = total.lines.pct || 0;
+              console.log(pct);
+            ")
+            echo "Line coverage: ${TOTAL}%"
+            if (( $(echo "$TOTAL < $COVERAGE_THRESHOLD" | bc -l) )); then
+              echo "ERROR: Line coverage ${TOTAL}% is below threshold $COVERAGE_THRESHOLD%"
+              exit 1
+            fi
+            echo "Coverage check passed!"
+          else
+            echo "Warning: coverage-summary.json not found, skipping threshold check"
+          fi
+        working-directory: ./${{ matrix.dir }}
+
+  # ── Stage 5: Config Validation ─────────────────────────────────────────────
+  config-validation:
+    name: Config Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Validate frontend configs
+        run: |
+          echo "=== Validating frontend configs ==="
+          npx tsc --showConfig --pretty false > /dev/null || { echo "❌ Invalid tsconfig.json"; exit 1; }
+          echo "✅ tsconfig.json valid"
+          npx vite build --mode development || { echo "❌ Invalid vite.config.ts"; exit 1; }
+          echo "✅ vite.config.ts valid"
+        working-directory: ./frontend
+
+      - name: Validate backend configs
+        run: |
+          echo "=== Validating backend configs ==="
+          npx tsc --showConfig --pretty false > /dev/null || { echo "❌ Invalid tsconfig.json"; exit 1; }
+          echo "✅ tsconfig.json valid"
+          echo "✅ Backend configs valid"
+        working-directory: ./backend
+
+  # ── Stage 6: Build Artifacts ────────────────────────────────────────────────
+  build-artifacts:
+    name: Build Artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [config-validation]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
-        run: |
-          cd frontend
-          npm ci
+      - name: Install frontend dependencies
+        run: npm ci
 
-      - name: Run ESLint
-        run: |
-          cd frontend
-          npm run lint
+      - name: Build frontend
+        run: npm run build
+        working-directory: ./frontend
 
-      - name: TypeScript type check
-        run: |
-          cd frontend
-          npx tsc --noEmit
-
-      - name: Run tests with coverage
-        run: |
-          cd frontend
-          npm test
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4
+      - name: Upload frontend build artifact
+        uses: actions/upload-artifact@v4
         with:
-          directory: ./frontend/coverage
-          flags: frontend
-          fail_ci_if_error: false
+          name: frontend-dist
+          path: ./frontend/dist
+          retention-days: 7
 
-  # Job 3: Backend CI
-  backend:
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: ./backend
+
+      - name: Build backend
+        run: npm run build
+        working-directory: ./backend
+
+      - name: Upload backend build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dist
+          path: ./backend/dist
+          retention-days: 7
+
+  # ── Stage 7: Environment Variable Documentation ─────────────────────────────
+  env-validation:
+    name: Env Var Documentation
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Install dependencies
-        run: |
-          cd backend
-          npm ci
-
-      - name: Run ESLint
-        run: |
-          cd backend
-          npm run lint
-
-      - name: TypeScript type check
-        run: |
-          cd backend
-          npx tsc --noEmit
-
-      - name: Run tests with coverage
-        run: |
-          cd backend
-          npm test
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          directory: ./backend/coverage
-          flags: backend
-          fail_ci_if_error: false
-
-  # Job 4: Environment Variable Documentation Validation
-  env-var-validation:
-    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Validate environment variable documentation
         run: |
-          # Check that all variables in .env.example are documented in README.md
+          echo "=== Validating environment variable documentation ==="
           if [ ! -f README.md ]; then
             echo "❌ README.md not found"
             exit 1
           fi
 
-          echo "Checking backend env vars..."
-          cd backend
-          if [ -f .env.example ]; then
-            grep -oE '[A-Z_]+=' .env.example | sed 's/=//' | while read var; do
-              if ! grep -q "$var" ../README.md; then
-                echo "❌ Backend env var '$var' is not documented in README.md"
-                MISSING=1
-              fi
-            done
-          fi
+          MISSING=0
 
-          cd ../frontend
-          if [ -f .env.example ]; then
-            echo "Checking frontend env vars..."
-            grep -oE 'VITE_[A-Z_]+=' .env.example | sed 's/=//' | while read var; do
-              if ! grep -q "$var" ../README.md; then
-                echo "❌ Frontend env var '$var' is not documented in README.md"
-                MISSING=1
-              fi
-            done
-          fi
+          for dir in backend frontend; do
+            if [ -f "$dir/.env.example" ]; then
+              echo "Checking $dir env vars..."
+              grep -oE '[A-Z_][A-Z0-9_]*=' "$dir/.env.example" | sed 's/=//' | while read var; do
+                if ! grep -q "$var" README.md; then
+                  echo "❌ Env var '$var' in $dir is not documented in README.md"
+                  MISSING=1
+                fi
+              done
+            fi
+          done
 
           if [ "$MISSING" = "1" ]; then
             exit 1
           fi
 
           echo "✅ All environment variables are documented"
-
-  # Job 5: Schema/Config Validation
-  config-validation:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install frontend dependencies
-        run: |
-          cd frontend
-          npm ci
-
-      - name: Validate frontend config files
-        run: |
-          cd frontend
-          # Validate tsconfig.json
-          npx tsc --showConfig --pretty false > /dev/null || { echo "❌ Invalid tsconfig.json"; exit 1; }
-          # Validate vite.config.ts
-          npx vite build --mode development || { echo "❌ Invalid vite.config.ts"; exit 1; }
-          # Validate tailwind config
-          npx tailwindcss -i ./src/index.css -o ./dist/output.css --dry-run || true
-          echo "✅ Frontend configs valid"
-
-      - name: Install backend dependencies
-        run: |
-          cd backend
-          npm ci
-
-      - name: Validate backend config files
-        run: |
-          cd backend
-          # Validate tsconfig.json
-          npx tsc --showConfig --pretty false > /dev/null || { echo "❌ Invalid tsconfig.json"; exit 1; }
-          echo "✅ Backend configs valid"
