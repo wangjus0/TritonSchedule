@@ -1,6 +1,7 @@
 import { getActiveTermFromDB } from "../ingestion/getActiveTermFromDB.js";
+import type { Request, Response } from "express";
 
-export async function getActiveTerm(req: any, res: any) {
+export async function getActiveTerm(req: Request, res: Response) {
   const currentTerm = await getActiveTermFromDB();
 
   if (!currentTerm) {
