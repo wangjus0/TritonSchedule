@@ -129,8 +129,8 @@ export async function scrapeCurrentPage(subject: string, term: string, page: Pag
 
         current.Lecture = {
           Days: nestedRows[5],
-          Time: nestedRows[5],
-          Location: nestedRows[5],
+          Time: nestedRows[6],
+          Location: nestedRows[7] + " " + nestedRows[8],
         };
       }
     }
