@@ -279,9 +279,10 @@ describe('Health Router Export Tests', () => {
     expect(typeof healthRouterDefault.get).toBe('function');
   });
 
-  it('healthRouter is correctly mounted on /health in the app', () => {
+  it('healthRouter is correctly mounted on /health in the app', async () => {
     // Smoke test: create a fresh mini app and mount the router
-    const miniApp = require('express')();
+    const expressModule = await import('express');
+    const miniApp = expressModule.default();
     miniApp.use('/health', healthRouterDefault);
 
     const res = request(miniApp).get('/health');
