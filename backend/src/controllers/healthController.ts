@@ -1,9 +1,16 @@
 import type { Request, Response } from "express";
-import { connectToDB } from "../services/connectToDB.js";
+import { connectToDB as defaultConnectToDB } from "../services/connectToDB.js";
 
 const REQUIRED_ENV_VARS = ["API_KEY", "DB_NAME", "MONGO_URI", "JWT_SECRET"] as const;
 
-export async function checkHealth(_req: Request, res: Response) {
+/**
+ * Check health of the service
+ * @param _req Express request (unused)
+ * @param res Express response
+ * @param dbFn Optional override for connectToDB (for testing only)
+ */
+export async function checkHealth(_req: Request, res: Response, dbFn?: () => Promise<any>) {
+  const connectToDB = dbFn ?? defaultConnectToDB;
   const startedAt = Date.now();
 
   const envChecks = REQUIRED_ENV_VARS.map((name) => ({
