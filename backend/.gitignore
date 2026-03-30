@@ -8,5 +8,8 @@ yarn.lock
 # Build output
 dist
 
+# Coverage reports
+coverage
+
 # Config
 .vercel
