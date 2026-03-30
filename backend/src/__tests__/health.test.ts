@@ -9,7 +9,7 @@ import { describe, it, expect, jest, afterAll, beforeAll } from '@jest/globals';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { MongoClient, Db } from 'mongodb';
 import request from 'supertest';
-import express from 'express';
+import express, { type Request, type Response } from 'express';
 import dotenv from 'dotenv';
 
 // Import the Express app and health router/controller
@@ -235,26 +235,26 @@ describe('GET /health – Route Mounting Tests', () => {
 
 describe('checkHealth controller – Unit Tests', () => {
   it('sets status code 200 when fully healthy', async () => {
-    const mockReq = {};
+    const mockReq = {} as Partial<Request>;
     const mockRes = {
       status: jest.fn<() => typeof mockRes>().mockReturnThis(),
       json: jest.fn<() => typeof mockRes>(),
-    } as any;
+    } as unknown as Response;
 
-    await checkHealth(mockReq, mockRes);
+    await checkHealth(mockReq as Request, mockRes);
     expect(mockRes.status).toHaveBeenCalledWith(200);
   });
 
   it('calls res.json with the correct structure', async () => {
-    const mockReq = {};
+    const mockReq = {} as Partial<Request>;
     const mockRes = {
       status: jest.fn<() => typeof mockRes>().mockReturnThis(),
       json: jest.fn<() => typeof mockRes>(),
-    } as any;
+    } as unknown as Response;
 
-    await checkHealth(mockReq, mockRes);
+    await checkHealth(mockReq as Request, mockRes);
 
-    const jsonCall = (mockRes.json as jest.Mock).mock.calls[0][0];
+    const jsonCall = (mockRes.json as jest.Mock).mock.calls[0][0] as Record<string, unknown>;
     expect(jsonCall).toHaveProperty('status', 'ok');
     expect(jsonCall).toHaveProperty('checks');
     expect(jsonCall.checks).toHaveProperty('server');
@@ -270,15 +270,17 @@ describe('checkHealth controller – Unit Tests', () => {
     delete process.env.API_KEY;
     delete process.env.JWT_SECRET;
 
-    const mockReq = {};
+    const mockReq = {} as Partial<Request>;
     const mockRes = {
       status: jest.fn<() => typeof mockRes>().mockReturnThis(),
       json: jest.fn<() => typeof mockRes>(),
-    } as any;
+    } as unknown as Response;
 
-    await checkHealth(mockReq, mockRes);
+    await checkHealth(mockReq as Request, mockRes);
 
-    const jsonCall = (mockRes.json as jest.Mock).mock.calls[0][0];
+    const jsonCall = (mockRes.json as jest.Mock).mock.calls[0][0] as {
+      checks: { env: { missing: string[] } };
+    };
     expect(jsonCall.checks.env.missing).toContain('API_KEY');
     expect(jsonCall.checks.env.missing).toContain('JWT_SECRET');
 
