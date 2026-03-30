@@ -2,7 +2,6 @@ import dotenv from "dotenv";
 import cliProgress from "cli-progress";
 import { connectToDB } from "../services/connectToDB.js";
 import { Db } from "mongodb";
-import { insertDB } from "../services/insertDB.js";
 import {
   searchSchool,
   getProfessorRatingAtSchoolId,
@@ -41,7 +40,9 @@ export async function rmpUpdate(curTerm: string) {
 
   rmpBar.start(searched.size, 0, { name: "" });
 
-  // Call RMP API
+  // Collect all RMP data first, then use bulkWrite
+  const rmpDataMap = new Map<string, RMP>();
+
   for (const teacher of searched) {
 
     rmpBar.update({ name: teacher.trim() });
@@ -57,18 +58,28 @@ export async function rmpUpdate(curTerm: string) {
         nameKey: teacher.toLowerCase(),
       };
 
-      // Match course with RMP data
-      await db.collection("courses").updateOne(
-        { nameKey: teacher },
-        { $set: { rmp: item } }
-      )
-
+      rmpDataMap.set(teacher.toLowerCase(), item);
     }
 
     rmpBar.increment();
   }
 
   rmpBar.stop(); // Close TUI
+
+  // Use bulkWrite for efficient batch updates
+  const operations = Array.from(rmpDataMap.entries()).map(([nameKey, rmp]) => ({
+    updateOne: {
+      filter: { nameKey },
+      update: { $set: { rmp } },
+    },
+  }));
+
+  if (operations.length > 0) {
+    const result = await db.collection("courses").bulkWrite(operations, { ordered: false });
+    console.log(`Bulk updated ${result.modifiedCount} courses with RMP data`);
+  } else {
+    console.log("No RMP data to update");
+  }
 
   return;
 }
