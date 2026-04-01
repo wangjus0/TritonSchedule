@@ -1,7 +1,18 @@
-import { Calendar, Search } from "lucide-react";
+import { Calendar, Search, LogOut, User } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TridentIcon } from "@/components/icons/TridentIcon";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 
 const navItems = [
   { title: "Search Courses", url: "/", icon: Search },
@@ -10,6 +21,11 @@ const navItems = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const { user, signOut } = useAuth();
+
+  const getInitials = (email: string) => {
+    return email.charAt(0).toUpperCase();
+  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-sidebar-border/80 bg-sidebar/85 backdrop-blur-xl">
@@ -24,26 +40,54 @@ export function AppSidebar() {
           </div>
         </div>
 
-        <nav className="grid w-full grid-cols-2 items-center gap-2 sm:flex sm:w-auto">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.url;
-            return (
-              <NavLink
-                key={item.title}
-                to={item.url}
-                className={cn(
-                  "inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all duration-200 sm:justify-start",
-                  isActive
-                    ? "border-primary/45 bg-primary/20 text-foreground shadow-[0_8px_24px_hsl(var(--primary)/0.22)]"
-                    : "border-transparent text-muted-foreground hover:border-sidebar-border/70 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                <span className="truncate">{item.title}</span>
-              </NavLink>
-            );
-          })}
-        </nav>
+        <div className="flex items-center gap-4">
+          <nav className="grid w-full grid-cols-2 items-center gap-2 sm:flex sm:w-auto">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.url;
+              return (
+                <NavLink
+                  key={item.title}
+                  to={item.url}
+                  className={cn(
+                    "inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all duration-200 sm:justify-start",
+                    isActive
+                      ? "border-primary/45 bg-primary/20 text-foreground shadow-[0_8px_24px_hsl(var(--primary)/0.22)]"
+                      : "border-transparent text-muted-foreground hover:border-sidebar-border/70 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                  <span className="truncate">{item.title}</span>
+                </NavLink>
+              );
+            })}
+          </nav>
+
+          {user && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                      {getInitials(user.email || "U")}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium">{user.email}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={signOut} className="cursor-pointer">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
     </header>
   );

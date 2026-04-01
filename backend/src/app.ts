@@ -7,6 +7,7 @@ import rmpRouter from "./routes/rmpRouter.js";
 import refreshRouter from "./routes/refreshRouter.js";
 import termRouter from "./routes/termRouter.js";
 import healthRouter from "./routes/healthRouter.js";
+import authRouter from "./routes/authRouter.js";
 import { requireApiSecret } from "./middleware/requireApiSecret.js";
 
 // Only load .env file in development (Vercel uses environment variables configured in dashboard)
@@ -41,5 +42,6 @@ app.use("/rmp", rmpRouter);
 app.use("/refresh", refreshRouter);
 app.use("/term", termRouter);
 app.use("/health", healthRouter);
+app.use("/auth", authRouter);
 
 export default app;
