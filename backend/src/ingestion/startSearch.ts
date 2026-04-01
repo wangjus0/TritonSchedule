@@ -1,7 +1,5 @@
 import cliProgress from "cli-progress";
-import { Db } from "mongodb";
 import puppeteer from "puppeteer";
-import { connectToDB } from "../services/connectToDB.js";
 import { insertDB } from "../services/insertDB.js";
 import { scrapeCurrentPage } from "./scrapeCurrentPage.js";
 import { rmpUpdate } from "./rmpUpdate.js";
@@ -198,10 +196,9 @@ const SUBJECT_CODES: string[] = [
 ];
 
 export async function startSearch(term: string) {
-  // Browser intialization
+  // Browser initialization
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
-  const db: Db = await connectToDB();
   const subjectBar = new cliProgress.SingleBar(
     {
       format: "Course Progress |{bar}| {value}/{total} | Current Subject: {code}",
@@ -263,11 +260,8 @@ export async function startSearch(term: string) {
         break;
       }
 
-      /*
-       * Connects, and inserts document to DB
-       * Note: Might block if you don't add IP to DB allowed list
-       */
-      await insertDB(db, curPageContent, "courses");
+      // Insert courses to Supabase
+      await insertDB(curPageContent, "courses");
 
       currentPage += 1;
 

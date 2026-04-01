@@ -1,7 +1,5 @@
-import { client } from "../services/connectToDB.js";
+import { disconnectFromSupabase } from "./supabase.js";
 
 export async function disconnectFromDB() {
-  if (client) {
-    await client.close();
-  }
+  await disconnectFromSupabase();
 }

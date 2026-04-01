@@ -1,11 +1,17 @@
-import { connectToDB } from "../services/connectToDB.js";
+import { connectToSupabase } from "../services/supabase.js";
 
 export async function markAllTermsInactive() {
-  const db = await connectToDB();
+  const supabase = await connectToSupabase();
 
-  const termsCollection = db.collection("terms");
+  const { error } = await supabase
+    .from('terms')
+    .update({ is_active: false })
+    .not('id', 'is', null);
 
-  await termsCollection.updateMany({}, { $set: { IsActive: false } });
+  if (error) {
+    console.error('Error marking all terms inactive:', error);
+    throw error;
+  }
 
   return;
 }

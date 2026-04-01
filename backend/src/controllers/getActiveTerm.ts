@@ -7,5 +7,6 @@ export async function getActiveTerm(req: any, res: any) {
     return res.status(404).send({ message: "No active term found" });
   }
 
-  return res.status(200).json({ Term: currentTerm.Term });
+  // The term object from Supabase has lowercase 'term' field
+  return res.status(200).json({ Term: currentTerm.term });
 }

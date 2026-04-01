@@ -1,19 +1,30 @@
+import { connectToSupabase } from "../services/supabase.js";
 import { ingest } from "../ingestion/ingest.js";
-import { connectToDB } from "../services/connectToDB.js";
-import type { Db } from "mongodb";
 
 export async function updateInformation(req: any, res: any) {
+  const supabase = await connectToSupabase();
 
-  const db: Db = await connectToDB();
+  // Delete all courses (clear entire table)
+  const { error: coursesError } = await supabase
+    .from('courses')
+    .delete()
+    .not('id', 'is', null);
 
-  const courseCollection = db.collection("courses");
-  const rmpCollection = db.collection("rmpData");
+  if (coursesError) {
+    console.error('Error clearing courses:', coursesError);
+  }
 
-  await courseCollection.deleteMany({}); // Delete all existing courses for updates
-  await rmpCollection.deleteMany({}); // Delete all existing rmp data for updates
+  // Delete all rmp_data
+  const { error: rmpError } = await supabase
+    .from('rmp_data')
+    .delete()
+    .not('id', 'is', null);
 
-  await ingest(); // Updates 
+  if (rmpError) {
+    console.error('Error clearing rmp_data:', rmpError);
+  }
+
+  await ingest();
 
   return res.status(200).send({ message: "Courses updated" });
-
 }
