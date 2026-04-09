@@ -1,4 +1,6 @@
-export async function requireApiSecret(req: any, res: any, next: any) {
+import type { Request, Response, NextFunction } from "express";
+
+export async function requireApiSecret(req: Request, res: Response, next: NextFunction) {
   if (req.method === "OPTIONS") {
     return next();
   }

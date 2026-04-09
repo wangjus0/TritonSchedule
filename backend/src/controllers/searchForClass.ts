@@ -1,7 +1,9 @@
 import { connectToDB } from "../services/connectToDB.js";
-import type { Db } from "mongodb";
+import type { Db, Filter } from "mongodb";
+import type { Request, Response } from "express";
+import type { Course } from "../models/Course.js";
 
-export async function searchForClass(req: any, res: any) {
+export async function searchForClass(req: Request, res: Response) {
 
   const db: Db = await connectToDB();
 
@@ -10,7 +12,7 @@ export async function searchForClass(req: any, res: any) {
   const term = typeof queryParams.term === "string" ? queryParams.term.trim() : "";
   const course = typeof queryParams.course === "string" ? queryParams.course.trim() : "";
 
-  const query: any = {};
+  const query: Filter<Course> = {};
 
   if (course.length > 0) {
     const safeCourse = course
