@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 100 100" role="img" aria-labelledby="title desc">
+  <title id="title">TritonSchedule Logo Mark</title>
+  <desc id="desc">A compact blue circular logo mark with a white three-prong trident.</desc>
+  <circle cx="50" cy="50" r="44" fill="#2563EB"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M50 31V78" stroke="#FFFFFF" stroke-width="8"/>
+    <path d="M30 44V57C30 68 39 75 50 78" stroke="#FFFFFF" stroke-width="8"/>
+    <path d="M70 44V57C70 68 61 75 50 78" stroke="#FFFFFF" stroke-width="8"/>
+    <path d="M50 23L42 36H58L50 23Z" fill="#FFFFFF" stroke="none"/>
+    <path d="M30 32L22 46H38L30 32Z" fill="#FFFFFF" stroke="none"/>
+    <path d="M70 32L62 46H78L70 32Z" fill="#FFFFFF" stroke="none"/>
+  </g>
+</svg>
