@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./frontend/public/triton-schedule-logo-only.svg" alt="TritonSchedule Logo" width="420" />
+  <img src="./frontend/public/triton-schedule-logo-only.svg" alt="TritonSchedule Logo" width="280" />
   <h1>TritonSchedule</h1>
   <h3>Making UCSD scheduling easier</h3>
   <em></em>
