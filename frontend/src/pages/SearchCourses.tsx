@@ -7,9 +7,14 @@ import { Weekday } from "@/types/calendar";
 import { toast } from "sonner";
 
 const API_KEY =
-  [import.meta.env.VITE_API_KEY, import.meta.env.API_KEY, "s30NjCmiUgc6dMhH8711cYkOYi5ALfN0"]
+  [import.meta.env.VITE_API_KEY, import.meta.env.API_KEY]
     .map((value) => (typeof value === "string" ? value.trim() : ""))
     .find((value) => value.length > 0) ?? "";
+
+// Throw a clear error during initialization if the API key is not configured in production
+if (!import.meta.env.DEV && !API_KEY) {
+  console.error("VITE_API_KEY is not set. Set VITE_API_KEY in your environment variables.");
+}
 const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? "/api" : ""));
 const API_BASE_FALLBACK = normalizeApiBase(import.meta.env.VITE_API_BASE_FALLBACK_URL ?? "");
 
@@ -71,6 +76,7 @@ function shouldTryFallback(response: Response): boolean {
 
 function createApiRequestInit(signal: AbortSignal): RequestInit {
   if (!API_KEY) {
+    // In production without an API key, the request will fail with a clear user-facing error
     return { signal };
   }
 
