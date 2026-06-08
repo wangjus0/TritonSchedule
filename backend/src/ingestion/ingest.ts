@@ -6,19 +6,6 @@ import { createTerm } from "./createTerm.js";
 import { startSearch } from "./startSearch.js";
 import { markAllTermsInactive } from "./markAllTermsInactive.js";
 
-// XXX: Current util functions for ingestion (gona use vercel cron http for repeated ingestion)
-// https://vercel.com/docs/cron-jobs 
-// - detectCurrentTerm() works
-// - getActiveTermFromDB() works
-// - createTerm() works
-// - markAllTermsInactive() works
-// - startSearch() works
-
-// NOTES: 
-// - I need to figure out what i'm going to do with course data from 2 terms ago.
-// Because we want to keep up to 2 terms of data in the DB, so I need figure out the 
-// document folder situation.
-
 export async function ingest() {
 
   const db: Db = await connectToDB();
