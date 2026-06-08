@@ -1,13 +1,13 @@
-import rateLimit from "express-rate-limit";
+import { ipKeyGenerator, rateLimit } from "express-rate-limit";
 import type { Request, Response } from "express";
 
-// Rate limiter: max 1 request per 10 minutes per IP
+// Rate limiter: max 1 request per 10 minutes per API key or IP
 export const refreshRateLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
   max: 1,
   standardHeaders: true,
   legacyHeaders: false,
-  message: async (req: Request, res: Response) => {
+  handler: (_req: Request, res: Response) => {
     res.setHeader("Retry-After", "600");
     return res.status(429).json({
       error: "Too many requests",
@@ -22,6 +22,6 @@ export const refreshRateLimiter = rateLimit({
       return authHeader.slice(7);
     }
     // Fall back to IP if no auth header
-    return req.ip ?? "unknown";
+    return ipKeyGenerator(req.ip ?? "unknown");
   },
 });
