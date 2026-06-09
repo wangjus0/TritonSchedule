@@ -1,13 +1,15 @@
-import { Db } from "mongodb";
+import type { Course } from "../models/Course.js";
+import { insertCourses } from "./supabaseRepository.js";
 
 export async function insertDB(
-  db: Db,
-  content: any[],
+  content: Course[],
   collection_name: string,
 ) {
-  const courses = db.collection(collection_name);
+  if (collection_name !== "courses") {
+    throw new Error(`Unsupported collection: ${collection_name}`);
+  }
 
-  await courses.insertMany(content);
+  await insertCourses(content);
 
   return;
 }

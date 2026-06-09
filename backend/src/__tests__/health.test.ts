@@ -6,19 +6,14 @@
  * Tests run via: cd backend && npm test
  */
 import { describe, it, expect, jest, afterAll, beforeAll } from '@jest/globals';
-import type { Express } from 'express';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Returns a mock-db object with configurable ping {ok} value */
-function makeMockDb(pingOk: 0 | 1) {
-  return {
-    admin: () => ({
-      command: jest.fn(() => Promise.resolve({ ok: pingOk })),
-    }),
-  };
+/** Returns a mock database ping function with configurable {ok} value */
+function makeMockPing(pingOk: 0 | 1) {
+  return jest.fn(() => Promise.resolve({ ok: pingOk }));
 }
 
 // ---------------------------------------------------------------------------
@@ -30,8 +25,8 @@ let checkHealth: any;
 
 beforeAll(async () => {
   process.env.API_KEY = 'test-api-key';
-  process.env.DB_NAME = 'testdb';
-  process.env.MONGO_URI = 'mongodb://localhost:27017';
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
   process.env.JWT_SECRET = 'test-jwt-secret';
 
   // Dynamically import to ensure mocks are registered before controller loads
@@ -44,8 +39,8 @@ beforeAll(async () => {
 afterAll(() => {
   jest.restoreAllMocks();
   delete process.env.API_KEY;
-  delete process.env.DB_NAME;
-  delete process.env.MONGO_URI;
+  delete process.env.SUPABASE_URL;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   delete process.env.JWT_SECRET;
 });
 
@@ -55,8 +50,7 @@ afterAll(() => {
 
 describe('checkHealth controller', () => {
   it('returns 200 when healthy', async () => {
-    const mockDb = makeMockDb(1);
-    const mockConnectToDB = jest.fn(() => Promise.resolve(mockDb));
+    const mockPingDatabase = makeMockPing(1);
 
     const mockReq = {} as any;
     const mockRes = {
@@ -64,7 +58,7 @@ describe('checkHealth controller', () => {
       json: jest.fn(),
     } as any;
 
-    await checkHealth(mockReq, mockRes, mockConnectToDB);
+    await checkHealth(mockReq, mockRes, mockPingDatabase);
 
     expect(mockRes.status).toHaveBeenCalledWith(200);
     const json = mockRes.json.mock.calls[0][0] as Record<string, any>;
@@ -78,8 +72,7 @@ describe('checkHealth controller', () => {
   });
 
   it('returns 503 when DB ping fails (ok: 0)', async () => {
-    const mockDb = makeMockDb(0);
-    const mockConnectToDB = jest.fn(() => Promise.resolve(mockDb));
+    const mockPingDatabase = makeMockPing(0);
 
     const mockReq = {} as any;
     const mockRes = {
@@ -87,7 +80,7 @@ describe('checkHealth controller', () => {
       json: jest.fn(),
     } as any;
 
-    await checkHealth(mockReq, mockRes, mockConnectToDB);
+    await checkHealth(mockReq, mockRes, mockPingDatabase);
 
     expect(mockRes.status).toHaveBeenCalledWith(503);
     const json = mockRes.json.mock.calls[0][0] as Record<string, any>;
@@ -96,7 +89,7 @@ describe('checkHealth controller', () => {
   });
 
   it('returns 503 when connectToDB throws', async () => {
-    const mockConnectToDB = jest.fn(() => Promise.reject(new Error('connection failed')));
+    const mockPingDatabase = jest.fn(() => Promise.reject(new Error('connection failed')));
 
     const mockReq = {} as any;
     const mockRes = {
@@ -104,7 +97,7 @@ describe('checkHealth controller', () => {
       json: jest.fn(),
     } as any;
 
-    await checkHealth(mockReq, mockRes, mockConnectToDB);
+    await checkHealth(mockReq, mockRes, mockPingDatabase);
 
     expect(mockRes.status).toHaveBeenCalledWith(503);
     const json = mockRes.json.mock.calls[0][0] as Record<string, any>;
@@ -117,8 +110,7 @@ describe('checkHealth controller', () => {
     const original = process.env.JWT_SECRET;
     delete process.env.JWT_SECRET;
 
-    const mockDb = makeMockDb(1);
-    const mockConnectToDB = jest.fn(() => Promise.resolve(mockDb));
+    const mockPingDatabase = makeMockPing(1);
 
     const mockReq = {} as any;
     const mockRes = {
@@ -126,7 +118,7 @@ describe('checkHealth controller', () => {
       json: jest.fn(),
     } as any;
 
-    await checkHealth(mockReq, mockRes, mockConnectToDB);
+    await checkHealth(mockReq, mockRes, mockPingDatabase);
 
     const json = mockRes.json.mock.calls[0][0] as Record<string, any>;
     expect(json.checks.env.ok).toBe(false);
@@ -138,8 +130,7 @@ describe('checkHealth controller', () => {
   });
 
   it('includes uptimeSeconds and responseTimeMs', async () => {
-    const mockDb = makeMockDb(1);
-    const mockConnectToDB = jest.fn(() => Promise.resolve(mockDb));
+    const mockPingDatabase = makeMockPing(1);
 
     const mockReq = {} as any;
     const mockRes = {
@@ -147,7 +138,7 @@ describe('checkHealth controller', () => {
       json: jest.fn(),
     } as any;
 
-    await checkHealth(mockReq, mockRes, mockConnectToDB);
+    await checkHealth(mockReq, mockRes, mockPingDatabase);
 
     const json = mockRes.json.mock.calls[0][0] as Record<string, any>;
     expect(typeof json.uptimeSeconds).toBe('number');

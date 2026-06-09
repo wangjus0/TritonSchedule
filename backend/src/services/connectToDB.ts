@@ -1,118 +1,49 @@
-import { MongoClient, Db, MongoNetworkError } from "mongodb";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-type MongoCache = {
-  client: MongoClient | null;
-  clientPromise: Promise<MongoClient> | null;
-  db: Db | null;
+type SupabaseCache = {
+  client: SupabaseClient | null;
 };
 
-const globalForMongo = globalThis as typeof globalThis & {
-  __mongoCache?: MongoCache;
+const globalForSupabase = globalThis as typeof globalThis & {
+  __supabaseCache?: SupabaseCache;
 };
 
-const mongoCache: MongoCache = globalForMongo.__mongoCache ?? {
+const supabaseCache: SupabaseCache = globalForSupabase.__supabaseCache ?? {
   client: null,
-  clientPromise: null,
-  db: null,
 };
 
-globalForMongo.__mongoCache = mongoCache;
+globalForSupabase.__supabaseCache = supabaseCache;
 
-export let client: MongoClient | null = mongoCache.client;
-let connecting: Promise<Db> | null = null;
+export function getSupabaseConfig() {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const MAX_CONNECTION_ATTEMPTS = 2;
+  if (!url) throw new Error("Missing SUPABASE_URL environment variable");
+  if (!serviceRoleKey) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY environment variable");
 
-export function getMongoConfig() {
-  const dbName = process.env.DB_NAME;
-  const uri = process.env.MONGO_URI;
-
-  if (!dbName) throw new Error("Missing DB_NAME environment variable");
-  if (!uri) throw new Error("Missing MONGO_URI environment variable");
-
-  return { dbName, uri };
+  return { serviceRoleKey, url };
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export function connectToDB() {
+  if (supabaseCache.client) return supabaseCache.client;
+
+  const { serviceRoleKey, url } = getSupabaseConfig();
+
+  supabaseCache.client = createClient(url, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  return supabaseCache.client;
 }
 
-export function shouldRetry(error: unknown) {
-  if (!(error instanceof MongoNetworkError)) return false;
+export async function pingDatabase() {
+  const supabase = connectToDB();
+  const { error } = await supabase.from("terms").select("id").limit(1);
 
-  const message = error.message.toLowerCase();
-  return message.includes("tlsv1 alert internal error") || message.includes("socket") || message.includes("timed out");
-}
+  if (error) throw error;
 
-async function clearBrokenClient() {
-  if (mongoCache.client) {
-    await mongoCache.client.close().catch(() => undefined);
-  }
-
-  mongoCache.client = null;
-  mongoCache.clientPromise = null;
-  mongoCache.db = null;
-  client = null;
-}
-
-async function getConnectedDb() {
-  if (mongoCache.db) return mongoCache.db;
-
-  const { dbName, uri } = getMongoConfig();
-
-  if (!mongoCache.clientPromise) {
-    mongoCache.client = new MongoClient(uri, {
-      maxPoolSize: 20,
-      minPoolSize: 0,
-      maxIdleTimeMS: 30000,
-      serverSelectionTimeoutMS: 10000,
-      connectTimeoutMS: 10000,
-      retryReads: true,
-      retryWrites: true,
-      tls: true,
-    });
-
-    mongoCache.clientPromise = mongoCache.client.connect();
-  }
-
-  const connectedClient = await mongoCache.clientPromise;
-  const connectedDb = connectedClient.db(dbName);
-
-  mongoCache.client = connectedClient;
-  mongoCache.db = connectedDb;
-  client = connectedClient;
-
-  return connectedDb;
-}
-
-export async function connectToDB() {
-  if (mongoCache.db) return mongoCache.db;
-  if (connecting) return connecting;
-
-  connecting = (async () => {
-    let attempt = 0;
-
-    while (attempt < MAX_CONNECTION_ATTEMPTS) {
-      try {
-        return await getConnectedDb();
-      } catch (error) {
-        attempt += 1;
-        await clearBrokenClient();
-
-        if (!shouldRetry(error) || attempt >= MAX_CONNECTION_ATTEMPTS) {
-          throw error;
-        }
-
-        await sleep(150 * attempt);
-      }
-    }
-
-    throw new Error("Unable to connect to MongoDB");
-  })();
-
-  try {
-    return await connecting;
-  } finally {
-    connecting = null;
-  }
+  return { ok: 1 };
 }

@@ -1,95 +1,47 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { insertDB } from "../services/insertDB.js";
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import type { Course } from "../models/Course.js";
+
+const mockInsertCourses = jest.fn<() => Promise<void>>();
+
+jest.unstable_mockModule("../services/supabaseRepository.js", () => ({
+  insertCourses: mockInsertCourses,
+}));
+
+const { insertDB } = await import("../services/insertDB.js");
+
+const course: Course = {
+  Name: "CSE 101",
+  Term: "FA25",
+  Teacher: "Jane Doe",
+  Lecture: null,
+  Labs: [],
+  Discussions: [],
+  Midterms: [],
+  Final: null,
+  nameKey: "jane doe",
+  rmp: null,
+};
 
 describe("insertDB", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    mockInsertCourses.mockReset();
+    mockInsertCourses.mockResolvedValue(undefined);
   });
 
-  it("should insert multiple documents into collection", async () => {
-    // @ts-expect-error - mocking insertMany return type
-    const mockInsertMany = jest.fn().mockResolvedValue({ insertedCount: 3 });
-    const mockCollection = jest.fn().mockReturnValue({
-      insertMany: mockInsertMany,
-    });
-    const mockDb = {
-      collection: mockCollection,
-    };
+  it("should insert course documents", async () => {
+    await insertDB([course], "courses");
 
-    const courses = [
-      { Name: "CSE 101", Term: "Fall 2024" },
-      { Name: "CSE 102", Term: "Fall 2024" },
-      { Name: "CSE 103", Term: "Fall 2024" },
-    ];
-
-    await insertDB(mockDb as any, courses, "courses");
-
-    expect(mockCollection).toHaveBeenCalledWith("courses");
-    expect(mockInsertMany).toHaveBeenCalledWith(courses);
+    expect(mockInsertCourses).toHaveBeenCalledWith([course]);
   });
 
   it("should return undefined on success", async () => {
-    // @ts-expect-error - mocking insertMany return type
-    const mockInsertMany = jest.fn().mockResolvedValue({ insertedCount: 1 });
-    const mockCollection = jest.fn().mockReturnValue({
-      insertMany: mockInsertMany,
-    });
-    const mockDb = {
-      collection: mockCollection,
-    };
-
-    const result = await insertDB(mockDb as any, [{ Name: "CSE 101" }], "courses");
+    const result = await insertDB([course], "courses");
 
     expect(result).toBeUndefined();
   });
 
-  it("should handle empty array", async () => {
-    // @ts-expect-error - mocking insertMany return type
-    const mockInsertMany = jest.fn().mockResolvedValue({ insertedCount: 0 });
-    const mockCollection = jest.fn().mockReturnValue({
-      insertMany: mockInsertMany,
-    });
-    const mockDb = {
-      collection: mockCollection,
-    };
-
-    await insertDB(mockDb as any, [], "courses");
-
-    expect(mockInsertMany).toHaveBeenCalledWith([]);
-  });
-
-  it("should work with different collection names", async () => {
-    // @ts-expect-error - mocking insertMany return type
-    const mockInsertMany = jest.fn().mockResolvedValue({ insertedCount: 1 });
-    const mockCollection = jest.fn().mockReturnValue({
-      insertMany: mockInsertMany,
-    });
-    const mockDb = {
-      collection: mockCollection,
-    };
-
-    await insertDB(mockDb as any, [{ Term: "Fall 2024" }], "terms");
-
-    expect(mockCollection).toHaveBeenCalledWith("terms");
-  });
-
-  it("should pass through any content object structure", async () => {
-    // @ts-expect-error - mocking insertMany return type
-    const mockInsertMany = jest.fn().mockResolvedValue({ insertedCount: 2 });
-    const mockCollection = jest.fn().mockReturnValue({
-      insertMany: mockInsertMany,
-    });
-    const mockDb = {
-      collection: mockCollection,
-    };
-
-    const complexData = [
-      { _id: "1", nested: { data: "value" }, array: [1, 2, 3] },
-      { _id: "2", nested: { data: "value2" }, array: [4, 5, 6] },
-    ];
-
-    await insertDB(mockDb as any, complexData, "test");
-
-    expect(mockInsertMany).toHaveBeenCalledWith(complexData);
+  it("should reject unsupported collections", async () => {
+    await expect(insertDB([course], "terms")).rejects.toThrow("Unsupported collection");
+    expect(mockInsertCourses).not.toHaveBeenCalled();
   });
 });

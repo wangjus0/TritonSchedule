@@ -1,11 +1,6 @@
-import { connectToDB } from "../services/connectToDB.js";
+import { markAllTermRowsInactive } from "../services/supabaseRepository.js";
 
 export async function markAllTermsInactive() {
-  const db = await connectToDB();
-
-  const termsCollection = db.collection("terms");
-
-  await termsCollection.updateMany({}, { $set: { IsActive: false } });
-
+  await markAllTermRowsInactive();
   return;
 }

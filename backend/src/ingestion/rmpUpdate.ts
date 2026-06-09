@@ -1,21 +1,22 @@
-import dotenv from "dotenv";
 import cliProgress from "cli-progress";
-import { connectToDB } from "../services/connectToDB.js";
-import { Db } from "mongodb";
 import {
   searchSchool,
   getProfessorRatingAtSchoolId,
 } from "ratemyprofessor-api";
 import type { RMP } from "../models/RMP.js";
 import { normalizeTeacherKey } from "../utils/normalizeTeacherKey.js";
+import {
+  findCoursesByTerm,
+  updateCoursesRmpByNameKey,
+  upsertProfessorRows,
+} from "../services/supabaseRepository.js";
 
 const schoolName = "University of California San Diego";
 
 export async function rmpUpdate(curTerm: string) {
 
   const searched = new Set<string>();
-  const db: Db = await connectToDB();
-  const docs = await db.collection("courses").find({ Term: curTerm }).toArray();
+  const docs = await findCoursesByTerm(curTerm);
 
   const school = await searchSchool(schoolName);
 
@@ -40,7 +41,7 @@ export async function rmpUpdate(curTerm: string) {
 
   rmpBar.start(searched.size, 0, { name: "" });
 
-  // Collect all RMP data first, then use bulkWrite
+  // Collect all RMP data first, then persist it in batches.
   const rmpDataMap = new Map<string, RMP>();
 
   for (const teacher of searched) {
@@ -66,17 +67,10 @@ export async function rmpUpdate(curTerm: string) {
 
   rmpBar.stop(); // Close TUI
 
-  // Use bulkWrite for efficient batch updates
-  const operations = Array.from(rmpDataMap.entries()).map(([nameKey, rmp]) => ({
-    updateOne: {
-      filter: { nameKey },
-      update: { $set: { rmp } },
-    },
-  }));
-
-  if (operations.length > 0) {
-    const result = await db.collection("courses").bulkWrite(operations, { ordered: false });
-    console.log(`Bulk updated ${result.modifiedCount} courses with RMP data`);
+  if (rmpDataMap.size > 0) {
+    await upsertProfessorRows(Array.from(rmpDataMap.values()));
+    const modifiedCount = await updateCoursesRmpByNameKey(rmpDataMap);
+    console.log(`Bulk updated ${modifiedCount} courses with RMP data`);
   } else {
     console.log("No RMP data to update");
   }
