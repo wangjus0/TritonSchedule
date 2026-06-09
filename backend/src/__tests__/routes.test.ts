@@ -22,6 +22,6 @@ describe("route exports", () => {
 
   it("should export the refresh router", () => {
     expect(typeof refreshRouter).toBe("function");
-    expect(typeof refreshRouter.post).toBe("function");
+    expect(typeof refreshRouter.get).toBe("function");
   });
 });

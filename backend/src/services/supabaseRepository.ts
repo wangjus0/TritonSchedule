@@ -32,7 +32,6 @@ type TermRow = {
 };
 
 const PAGE_SIZE = 1000;
-const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
 
 function throwIfError(error: PostgrestError | null) {
   if (error) throw error;
@@ -45,21 +44,6 @@ function escapeLike(value: string) {
 function flexibleLikePattern(value: string) {
   const tokens = value.trim().split(/\s+/).filter(Boolean).map(escapeLike);
   return `%${tokens.join("%")}%`;
-}
-
-function toCourseRow(course: Course) {
-  return {
-    name: course.Name,
-    term: course.Term,
-    teacher: course.Teacher,
-    name_key: course.nameKey,
-    lecture: course.Lecture,
-    labs: course.Labs,
-    discussions: course.Discussions,
-    midterms: course.Midterms,
-    final: course.Final,
-    rmp: course.rmp,
-  };
 }
 
 function toCourseDocument(row: CourseRow): Course & { id: string } {
@@ -128,23 +112,18 @@ export async function searchCourses(course: string, term: string) {
   return rows.map(toCourseDocument);
 }
 
-export async function insertCourses(courses: Course[]) {
-  if (courses.length <= 0) return;
+export async function replaceCatalog(term: string, courses: Course[], professors: RMP[]) {
+  if (courses.length <= 0) {
+    throw new Error("Refusing to replace catalog with no courses");
+  }
 
   const supabase = connectToDB();
-  const { error } = await supabase.from("courses").insert(courses.map(toCourseRow));
-  throwIfError(error);
-}
+  const { error } = await supabase.rpc("replace_catalog", {
+    p_courses: courses,
+    p_professors: professors,
+    p_term: term,
+  });
 
-export async function deleteAllCourses() {
-  const supabase = connectToDB();
-  const { error } = await supabase.from("courses").delete().neq("id", ZERO_UUID);
-  throwIfError(error);
-}
-
-export async function deleteAllProfessor() {
-  const supabase = connectToDB();
-  const { error } = await supabase.from("professor").delete().neq("id", ZERO_UUID);
   throwIfError(error);
 }
 
@@ -161,84 +140,38 @@ export async function getActiveTermRow() {
   return data ? toTermDocument(data as TermRow) : null;
 }
 
-export async function createTermRow(term: string) {
-  const supabase = connectToDB();
-  const { data: existing, error: findError } = await supabase
-    .from("terms")
-    .select("id")
-    .eq("term", term)
-    .maybeSingle();
-
-  throwIfError(findError);
-  if (existing) return;
-
-  const { error } = await supabase.from("terms").insert({
-    term,
-    is_active: true,
-  });
-
-  throwIfError(error);
-}
-
-export async function markAllTermRowsInactive() {
-  const supabase = connectToDB();
-  const { error } = await supabase.from("terms").update({ is_active: false }).neq("id", ZERO_UUID);
-  throwIfError(error);
-}
-
-export async function findCoursesByTerm(term: string) {
-  return searchCourses("", term);
-}
-
-export async function upsertProfessorRows(rmpData: RMP[]) {
-  if (rmpData.length <= 0) return;
-
-  const rows = rmpData.map((rmp) => ({
-    name: rmp.name,
-    name_key: rmp.nameKey,
-    avg_rating: rmp.avgRating,
-    avg_diff: rmp.avgDiff,
-    take_again_percent: rmp.takeAgainPercent,
-  }));
-
-  const supabase = connectToDB();
-  const { error } = await supabase.from("professor").upsert(rows, {
-    onConflict: "name_key",
-  });
-
-  throwIfError(error);
-}
-
-export async function updateCoursesRmpByNameKey(rmpByNameKey: Map<string, RMP>) {
-  const supabase = connectToDB();
-  let modifiedCount = 0;
-
-  for (const [nameKey, rmp] of rmpByNameKey.entries()) {
-    const { count, error } = await supabase
-      .from("courses")
-      .update({ rmp }, { count: "exact" })
-      .eq("name_key", nameKey);
-
-    throwIfError(error);
-    modifiedCount += count ?? 0;
-  }
-
-  return modifiedCount;
-}
-
 export async function searchProfessor(nameKey?: string) {
   const supabase = connectToDB();
-  let query = supabase
-    .from("professor")
-    .select("name,name_key,avg_rating,avg_diff,take_again_percent")
-    .order("name", { ascending: true });
 
   if (nameKey) {
-    query = query.eq("name_key", nameKey);
+    const { data, error } = await supabase
+      .from("professor")
+      .select("name,name_key,avg_rating,avg_diff,take_again_percent")
+      .eq("name_key", nameKey)
+      .order("name", { ascending: true });
+
+    throwIfError(error);
+    return ((data ?? []) as ProfessorRow[]).map(toRmpDocument);
   }
 
-  const { data, error } = await query;
-  throwIfError(error);
+  const rows: ProfessorRow[] = [];
+  let offset = 0;
 
-  return ((data ?? []) as ProfessorRow[]).map(toRmpDocument);
+  while (true) {
+    const { data, error } = await supabase
+      .from("professor")
+      .select("name,name_key,avg_rating,avg_diff,take_again_percent")
+      .order("name", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    throwIfError(error);
+
+    const page = (data ?? []) as ProfessorRow[];
+    rows.push(...page);
+
+    if (page.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+
+  return rows.map(toRmpDocument);
 }

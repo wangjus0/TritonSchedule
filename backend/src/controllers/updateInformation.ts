@@ -1,13 +1,11 @@
 import { ingest } from "../ingestion/ingest.js";
-import { deleteAllCourses, deleteAllProfessor } from "../services/supabaseRepository.js";
+import { replaceCatalog } from "../services/supabaseRepository.js";
 import type { Request, Response } from "express";
 
 export async function updateInformation(req: Request, res: Response) {
   try {
-    await deleteAllCourses(); // Delete all existing courses for updates
-    await deleteAllProfessor(); // Delete all existing professor data for updates
-
-    await ingest(); // Updates
+    const result = await ingest(); // Scrapes updates without mutating the database
+    await replaceCatalog(result.term, result.courses, result.professors);
 
     return res.status(200).send({ message: "Courses updated" });
   } catch (error) {

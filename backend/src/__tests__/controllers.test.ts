@@ -2,16 +2,14 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
 const mockSearchCourses = jest.fn<() => Promise<any[]>>();
 const mockSearchProfessor = jest.fn<() => Promise<any[]>>();
-const mockDeleteAllCourses = jest.fn<() => Promise<void>>();
-const mockDeleteAllProfessor = jest.fn<() => Promise<void>>();
-const mockIngest = jest.fn<() => Promise<void>>();
+const mockReplaceCatalog = jest.fn<() => Promise<void>>();
+const mockIngest = jest.fn<() => Promise<any>>();
 const mockGetActiveTermFromDB = jest.fn<() => Promise<any>>();
 
 jest.unstable_mockModule("../services/supabaseRepository.js", () => ({
   searchCourses: mockSearchCourses,
   searchProfessor: mockSearchProfessor,
-  deleteAllCourses: mockDeleteAllCourses,
-  deleteAllProfessor: mockDeleteAllProfessor,
+  replaceCatalog: mockReplaceCatalog,
 }));
 
 jest.unstable_mockModule("../ingestion/ingest.js", () => ({
@@ -119,22 +117,30 @@ describe("getActiveTerm controller", () => {
 
 describe("updateInformation controller", () => {
   beforeEach(() => {
-    mockDeleteAllCourses.mockReset();
-    mockDeleteAllProfessor.mockReset();
+    mockReplaceCatalog.mockReset();
     mockIngest.mockReset();
-    mockDeleteAllCourses.mockResolvedValue(undefined);
-    mockDeleteAllProfessor.mockResolvedValue(undefined);
-    mockIngest.mockResolvedValue(undefined);
+    mockReplaceCatalog.mockResolvedValue(undefined);
+    mockIngest.mockResolvedValue({
+      term: "SP26",
+      courses: [{ Name: "CSE 101", Term: "SP26" }],
+      professors: [{ name: "jane doe", nameKey: "jane doe" }],
+    });
   });
 
-  it("should clear courses and professor records before ingesting", async () => {
+  it("should replace the catalog after ingesting", async () => {
     const res = mockResponse();
 
     await updateInformation({} as any, res);
 
-    expect(mockDeleteAllCourses).toHaveBeenCalled();
-    expect(mockDeleteAllProfessor).toHaveBeenCalled();
     expect(mockIngest).toHaveBeenCalled();
+    expect(mockReplaceCatalog).toHaveBeenCalledWith(
+      "SP26",
+      [{ Name: "CSE 101", Term: "SP26" }],
+      [{ name: "jane doe", nameKey: "jane doe" }],
+    );
+    expect(mockIngest.mock.invocationCallOrder[0]).toBeLessThan(
+      mockReplaceCatalog.mock.invocationCallOrder[0],
+    );
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.send).toHaveBeenCalledWith({ message: "Courses updated" });
   });
@@ -145,6 +151,7 @@ describe("updateInformation controller", () => {
 
     await updateInformation({} as any, res);
 
+    expect(mockReplaceCatalog).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.send).toHaveBeenCalledWith({
       error: "Failed to update courses",

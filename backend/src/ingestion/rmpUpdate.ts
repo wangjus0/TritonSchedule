@@ -3,27 +3,22 @@ import {
   searchSchool,
   getProfessorRatingAtSchoolId,
 } from "ratemyprofessor-api";
+import type { Course } from "../models/Course.js";
 import type { RMP } from "../models/RMP.js";
 import { normalizeTeacherKey } from "../utils/normalizeTeacherKey.js";
-import {
-  findCoursesByTerm,
-  updateCoursesRmpByNameKey,
-  upsertProfessorRows,
-} from "../services/supabaseRepository.js";
 
 const schoolName = "University of California San Diego";
 
-export async function rmpUpdate(curTerm: string) {
+export async function rmpUpdate(courses: Course[]) {
 
   const searched = new Set<string>();
-  const docs = await findCoursesByTerm(curTerm);
 
   const school = await searchSchool(schoolName);
 
   // Add items to searched set 
-  for (const doc of docs) {
+  for (const course of courses) {
 
-    const normalized = normalizeTeacherKey(doc.Teacher);
+    const normalized = normalizeTeacherKey(course.Teacher);
 
     if (normalized.length > 0 && !searched.has(normalized)) {
       searched.add(normalized);
@@ -67,13 +62,9 @@ export async function rmpUpdate(curTerm: string) {
 
   rmpBar.stop(); // Close TUI
 
-  if (rmpDataMap.size > 0) {
-    await upsertProfessorRows(Array.from(rmpDataMap.values()));
-    const modifiedCount = await updateCoursesRmpByNameKey(rmpDataMap);
-    console.log(`Bulk updated ${modifiedCount} courses with RMP data`);
-  } else {
-    console.log("No RMP data to update");
+  for (const course of courses) {
+    course.rmp = rmpDataMap.get(course.nameKey.toLowerCase()) ?? null;
   }
 
-  return;
+  return Array.from(rmpDataMap.values());
 }

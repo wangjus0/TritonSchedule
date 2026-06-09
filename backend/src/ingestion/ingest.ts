@@ -1,28 +1,21 @@
 import { detectCurrentTerm } from "./detectCurrentTerm.js";
-import { getActiveTermFromDB } from "./getActiveTermFromDB.js";
-import { createTerm } from "./createTerm.js";
 import { startSearch } from "./startSearch.js";
-import { markAllTermsInactive } from "./markAllTermsInactive.js";
+import type { Course } from "../models/Course.js";
+import type { RMP } from "../models/RMP.js";
 
-export async function ingest() {
+export type IngestResult = {
+  term: string;
+  courses: Course[];
+  professors: RMP[];
+};
 
+export async function ingest(): Promise<IngestResult> {
   const detectedTerm = await detectCurrentTerm(); // Determine new term
-  const activeTerm = await getActiveTermFromDB(); // Determine term before
+  const result = await startSearch(detectedTerm);
 
-  if (!activeTerm) {
-    // first-ever run
-    await createTerm(detectedTerm);
-    await startSearch(detectedTerm);
-  } else if (activeTerm.Term !== detectedTerm) {
-    // term rollover
-    await markAllTermsInactive();
-    await createTerm(detectedTerm);
-    await startSearch(detectedTerm);
-  } else {
-    // updating course information
-    await startSearch(detectedTerm);
-  }
-
-  return;
-
+  return {
+    term: detectedTerm,
+    courses: result.courses,
+    professors: result.professors,
+  };
 }

@@ -5,24 +5,10 @@ describe("Ingestion Modules", () => {
     jest.clearAllMocks();
   });
 
-  describe("createTerm", () => {
-    it("should export a function", async () => {
-      const { createTerm } = await import("../ingestion/createTerm.js");
-      expect(typeof createTerm).toBe("function");
-    });
-  });
-
   describe("getActiveTermFromDB", () => {
     it("should export a function", async () => {
       const { getActiveTermFromDB } = await import("../ingestion/getActiveTermFromDB.js");
       expect(typeof getActiveTermFromDB).toBe("function");
-    });
-  });
-
-  describe("markAllTermsInactive", () => {
-    it("should export a function", async () => {
-      const { markAllTermsInactive } = await import("../ingestion/markAllTermsInactive.js");
-      expect(typeof markAllTermsInactive).toBe("function");
     });
   });
 
