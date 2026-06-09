@@ -1,348 +1,161 @@
-/**
- * Tests for Controller functions
- * Uses mongodb-memory-server for real DB operations
- */
-import { describe, it, expect, jest, beforeEach, afterAll, beforeAll } from '@jest/globals';
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import { MongoClient, Db } from 'mongodb';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
-let mongoServer: MongoMemoryServer;
-let client: MongoClient;
-let testDb: Db;
+const mockSearchCourses = jest.fn<() => Promise<any[]>>();
+const mockSearchProfessor = jest.fn<() => Promise<any[]>>();
+const mockReplaceCatalog = jest.fn<() => Promise<void>>();
+const mockIngest = jest.fn<() => Promise<any>>();
+const mockGetActiveTermFromDB = jest.fn<() => Promise<any>>();
 
-beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  const uri = mongoServer.getUri();
-  client = new MongoClient(uri);
-  await client.connect();
-  testDb = client.db('testdb');
-});
+jest.unstable_mockModule("../services/supabaseRepository.js", () => ({
+  searchCourses: mockSearchCourses,
+  searchProfessor: mockSearchProfessor,
+  replaceCatalog: mockReplaceCatalog,
+}));
 
-afterAll(async () => {
-  await client.close();
-  await mongoServer.stop();
-});
+jest.unstable_mockModule("../ingestion/ingest.js", () => ({
+  ingest: mockIngest,
+}));
 
-describe('getActiveTerm Controller - DB Logic Tests', () => {
-  beforeEach(async () => {
-    await testDb.collection('terms').deleteMany({});
+jest.unstable_mockModule("../ingestion/getActiveTermFromDB.js", () => ({
+  getActiveTermFromDB: mockGetActiveTermFromDB,
+}));
+
+const { searchForClass } = await import("../controllers/searchForClass.js");
+const { searchOneRMP } = await import("../controllers/searchOneRMP.js");
+const { updateInformation } = await import("../controllers/updateInformation.js");
+const { getActiveTerm } = await import("../controllers/getActiveTerm.js");
+
+function mockResponse() {
+  return {
+    status: jest.fn().mockReturnThis(),
+    json: jest.fn(),
+    send: jest.fn(),
+  } as any;
+}
+
+describe("searchForClass controller", () => {
+  beforeEach(() => {
+    mockSearchCourses.mockReset();
+    mockSearchCourses.mockResolvedValue([]);
   });
 
-  it('should return 404 when no active term found', async () => {
-    // Test the DB query that the controller uses
-    const currentTerm = await testDb.collection('terms').findOne({ IsActive: true });
-    
-    // Controller returns 404 if !currentTerm
-    expect(currentTerm).toBeNull();
-  });
+  it("should trim query params and return course data", async () => {
+    const courses = [{ Name: "CSE 101", Term: "FA25" }];
+    mockSearchCourses.mockResolvedValue(courses);
+    const res = mockResponse();
 
-  it('should return the active term when exists', async () => {
-    await testDb.collection('terms').insertOne({ Term: 'FA25', IsActive: true });
-    
-    const currentTerm = await testDb.collection('terms').findOne({ IsActive: true });
-    
-    // Controller returns 200 with { Term: currentTerm.Term }
-    expect(currentTerm).not.toBeNull();
-    expect(currentTerm?.Term).toBe('FA25');
-  });
+    await searchForClass({ query: { course: "  CSE 101  ", term: " FA25 " } }, res);
 
-  it('should return correct term when multiple terms exist', async () => {
-    await testDb.collection('terms').insertMany([
-      { Term: 'FA25', IsActive: false },
-      { Term: 'WI26', IsActive: true },
-      { Term: 'SP26', IsActive: false },
-    ]);
-    
-    const currentTerm = await testDb.collection('terms').findOne({ IsActive: true });
-    
-    expect(currentTerm?.Term).toBe('WI26');
+    expect(mockSearchCourses).toHaveBeenCalledWith("CSE 101", "FA25");
+    expect(res.json).toHaveBeenCalledWith({ data: courses });
   });
 });
 
-describe('searchForClass Controller - DB Logic Tests', () => {
-  beforeEach(async () => {
-    await testDb.collection('courses').deleteMany({});
+describe("searchOneRMP controller", () => {
+  beforeEach(() => {
+    mockSearchProfessor.mockReset();
+    mockSearchProfessor.mockResolvedValue([]);
   });
 
-  it('should return all courses when no query params', async () => {
-    await testDb.collection('courses').insertMany([
-      { Name: 'CSE 101', Term: 'FA25' },
-      { Name: 'MATH 20C', Term: 'FA25' },
-    ]);
-    
-    // Controller builds empty query when no params
-    const query: any = {};
-    const results = await testDb.collection('courses').find(query).toArray();
-    
-    expect(results).toHaveLength(2);
+  it("should return all professor records when teacher is omitted", async () => {
+    const records = [{ name: "jane doe", nameKey: "jane doe" }];
+    mockSearchProfessor.mockResolvedValue(records);
+    const res = mockResponse();
+
+    await searchOneRMP({ query: {} }, res);
+
+    expect(mockSearchProfessor).toHaveBeenCalledWith();
+    expect(res.send).toHaveBeenCalledWith({ Data: records });
   });
 
-  it('should filter by course name', async () => {
-    await testDb.collection('courses').insertMany([
-      { Name: 'CSE 101', Term: 'FA25' },
-      { Name: 'CSE 102', Term: 'FA25' },
-      { Name: 'MATH 20C', Term: 'FA25' },
-    ]);
-    
-    // Controller builds query from course param
-    const course = 'CSE 101';
-    const safeCourse = course.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
-    const query: any = { Name: { $regex: safeCourse, $options: 'i' } };
-    
-    const results = await testDb.collection('courses').find(query).toArray();
-    
-    expect(results).toHaveLength(1);
-    expect(results[0].Name).toBe('CSE 101');
+  it("should normalize teacher names before lookup", async () => {
+    const records = [{ name: "jane doe", nameKey: "jane doe" }];
+    mockSearchProfessor.mockResolvedValue(records);
+    const res = mockResponse();
+
+    await searchOneRMP({ query: { teacher: "  Jane   Doe! " } }, res);
+
+    expect(mockSearchProfessor).toHaveBeenCalledWith("jane doe");
+    expect(res.send).toHaveBeenCalledWith({ Data: records });
   });
 
-  it('should filter by term', async () => {
-    await testDb.collection('courses').insertMany([
-      { Name: 'CSE 101', Term: 'FA25' },
-      { Name: 'CSE 101', Term: 'WI26' },
-    ]);
-    
-    const term = 'FA25';
-    const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
-    const query: any = { Term: { $regex: safeTerm, $options: 'i' } };
-    
-    const results = await testDb.collection('courses').find(query).toArray();
-    
-    expect(results).toHaveLength(1);
-    expect(results[0].Term).toBe('FA25');
-  });
+  it("should return 404 when a teacher is not found", async () => {
+    const res = mockResponse();
 
-  it('should filter by both course and term', async () => {
-    await testDb.collection('courses').insertMany([
-      { Name: 'CSE 101', Term: 'FA25' },
-      { Name: 'CSE 101', Term: 'WI26' },
-      { Name: 'MATH 20C', Term: 'FA25' },
-    ]);
-    
-    const course = 'CSE';
-    const term = 'FA25';
-    const query: any = {
-      Name: { $regex: course, $options: 'i' },
-      Term: { $regex: term, $options: 'i' },
-    };
-    
-    const results = await testDb.collection('courses').find(query).toArray();
-    
-    expect(results).toHaveLength(1);
-    expect(results[0].Name).toBe('CSE 101');
-    expect(results[0].Term).toBe('FA25');
-  });
+    await searchOneRMP({ query: { teacher: "Unknown" } }, res);
 
-  it('should handle case-insensitive search', async () => {
-    await testDb.collection('courses').insertOne({ Name: 'Computer Science 101', Term: 'FA25' });
-    
-    const query: any = { Name: { $regex: 'computer science', $options: 'i' } };
-    const results = await testDb.collection('courses').find(query).toArray();
-    
-    expect(results).toHaveLength(1);
-  });
-
-  it('should return empty array when no matches', async () => {
-    await testDb.collection('courses').insertOne({ Name: 'CSE 101', Term: 'FA25' });
-    
-    const query: any = { Name: { $regex: 'xyz', $options: 'i' } };
-    const results = await testDb.collection('courses').find(query).toArray();
-    
-    expect(results).toHaveLength(0);
-  });
-
-  it('should handle whitespace in course name', async () => {
-    await testDb.collection('courses').insertOne({ Name: 'CSE 101', Term: 'FA25' });
-    
-    const course = '  CSE 101  ';
-    const trimmed = typeof course === 'string' ? course.trim() : '';
-    const safeCourse = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
-    const query: any = { Name: { $regex: safeCourse, $options: 'i' } };
-    
-    const results = await testDb.collection('courses').find(query).toArray();
-    expect(results).toHaveLength(1);
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.send).toHaveBeenCalledWith("Item not found");
   });
 });
 
-describe('searchOneRMP Controller - DB Logic Tests', () => {
-  beforeEach(async () => {
-    await testDb.collection('rmpData').deleteMany({});
+describe("getActiveTerm controller", () => {
+  beforeEach(() => {
+    mockGetActiveTermFromDB.mockReset();
   });
 
-  it('should return all RMP data when no teacher param', async () => {
-    await testDb.collection('rmpData').insertMany([
-      { name: 'John Smith', nameKey: 'john smith', avgRating: 4.5 },
-      { name: 'Jane Doe', nameKey: 'jane doe', avgRating: 4.8 },
-    ]);
-    
-    // Controller returns all when no teacher param
-    const results = await testDb.collection('rmpData').find({}).toArray();
-    
-    expect(results).toHaveLength(2);
+  it("should return active term", async () => {
+    mockGetActiveTermFromDB.mockResolvedValue({ Term: "FA25", IsActive: true });
+    const res = mockResponse();
+
+    await getActiveTerm({} as any, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ Term: "FA25" });
   });
 
-  it('should find teacher by normalized nameKey', async () => {
-    await testDb.collection('rmpData').insertOne({
-      name: 'John Smith',
-      nameKey: 'john smith',
-      avgRating: 4.5,
-    });
-    
-    // Controller normalizes teacher name
-    const teacher = 'John Smith';
-    const normalized = teacher.replace(/\s+/g, ' ').replace(/[^\w\s]/g, '').trim().toLowerCase();
-    const results = await testDb.collection('rmpData').find({ nameKey: normalized }).toArray();
-    
-    expect(results).toHaveLength(1);
-    expect(results[0].name).toBe('John Smith');
-  });
+  it("should return 404 when no active term exists", async () => {
+    mockGetActiveTermFromDB.mockResolvedValue(null);
+    const res = mockResponse();
 
-  it('should return empty when teacher not found', async () => {
-    await testDb.collection('rmpData').insertOne({
-      name: 'John Smith',
-      nameKey: 'john smith',
-      avgRating: 4.5,
-    });
-    
-    const results = await testDb.collection('rmpData').find({ nameKey: 'unknown' }).toArray();
-    
-    expect(results.length).toBe(0);
-  });
+    await getActiveTerm({} as any, res);
 
-  it('should handle teacher name with extra spaces', async () => {
-    await testDb.collection('rmpData').insertOne({
-      name: 'John Smith',
-      nameKey: 'john smith',
-      avgRating: 4.5,
-    });
-    
-    // Test normalization logic from controller
-    const teacher = '  John   Smith  ';
-    const normalized = teacher.replace(/\s+/g, ' ').replace(/[^\w\s]/g, '').trim().toLowerCase();
-    
-    expect(normalized).toBe('john smith');
-  });
-
-  it('should return 404 when teacher not found', async () => {
-    const data = []; // Empty result
-    
-    // Controller returns 404 if data.length <= 0
-    expect(data.length <= 0).toBe(true);
-  });
-
-  it('should return multiple professors with same normalized name', async () => {
-    await testDb.collection('rmpData').insertMany([
-      { name: 'John Smith', nameKey: 'john smith', avgRating: 4.5 },
-      { name: 'John Smith', nameKey: 'john smith', avgRating: 3.8 },
-    ]);
-    
-    const results = await testDb.collection('rmpData').find({ nameKey: 'john smith' }).toArray();
-    
-    expect(results).toHaveLength(2);
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.send).toHaveBeenCalledWith({ message: "No active term found" });
   });
 });
 
-describe('updateInformation Controller - DB Logic Tests', () => {
-  beforeEach(async () => {
-    await testDb.collection('courses').deleteMany({});
-    await testDb.collection('rmpData').deleteMany({});
-  });
-
-  it('should clear courses and rmpData collections', async () => {
-    // Insert initial data
-    await testDb.collection('courses').insertOne({ Name: 'Old Course' });
-    await testDb.collection('rmpData').insertOne({ name: 'Old Prof' });
-    
-    // Verify data exists
-    let courses = await testDb.collection('courses').find({}).toArray();
-    expect(courses).toHaveLength(1);
-    
-    // Controller logic: deleteMany for both collections
-    await testDb.collection('courses').deleteMany({});
-    await testDb.collection('rmpData').deleteMany({});
-    
-    // Verify collections are cleared
-    courses = await testDb.collection('courses').find({}).toArray();
-    const rmpData = await testDb.collection('rmpData').find({}).toArray();
-    expect(courses).toHaveLength(0);
-    expect(rmpData).toHaveLength(0);
-  });
-
-  it('should prepare for ingestion', async () => {
-    // Verify that clearing collections prepares for new data
-    await testDb.collection('courses').deleteMany({});
-    await testDb.collection('rmpData').deleteMany({});
-    
-    const courses = await testDb.collection('courses').find({}).toArray();
-    const rmpData = await testDb.collection('rmpData').find({}).toArray();
-    
-    expect(courses).toHaveLength(0);
-    expect(rmpData).toHaveLength(0);
-  });
-});
-
-// Test controller response logic
-describe('Controller Response Logic Tests', () => {
-  beforeEach(async () => {
-    await testDb.collection('terms').deleteMany({});
-    await testDb.collection('courses').deleteMany({});
-    await testDb.collection('rmpData').deleteMany({});
-  });
-
-  it('getActiveTerm response: 404 when no term', () => {
-    const currentTerm = null;
-    const response = !currentTerm ? 404 : 200;
-    expect(response).toBe(404);
-  });
-
-  it('getActiveTerm response: 200 with term when found', async () => {
-    await testDb.collection('terms').insertOne({ Term: 'FA25', IsActive: true });
-    const currentTerm = await testDb.collection('terms').findOne({ IsActive: true });
-    
-    const response = !currentTerm ? 404 : 200;
-    const body = !currentTerm ? { message: 'No active term found' } : { Term: currentTerm.Term };
-    
-    expect(response).toBe(200);
-    expect(body).toEqual({ Term: 'FA25' });
-  });
-
-  it('searchForClass builds correct query object', () => {
-    // Test query building logic
-    const queryParams = { course: 'CSE', term: 'FA25' };
-    const query: any = {};
-    
-    const course = typeof queryParams.course === 'string' ? queryParams.course.trim() : '';
-    if (course.length > 0) {
-      query.Name = { $regex: course, $options: 'i' };
-    }
-    
-    const term = typeof queryParams.term === 'string' ? queryParams.term.trim() : '';
-    if (term.length > 0) {
-      query.Term = { $regex: term, $options: 'i' };
-    }
-    
-    expect(query).toEqual({
-      Name: { $regex: 'CSE', $options: 'i' },
-      Term: { $regex: 'FA25', $options: 'i' }
+describe("updateInformation controller", () => {
+  beforeEach(() => {
+    mockReplaceCatalog.mockReset();
+    mockIngest.mockReset();
+    mockReplaceCatalog.mockResolvedValue(undefined);
+    mockIngest.mockResolvedValue({
+      term: "SP26",
+      courses: [{ Name: "CSE 101", Term: "SP26" }],
+      professors: [{ name: "jane doe", nameKey: "jane doe" }],
     });
   });
 
-  it('searchOneRMP returns 404 when not found', () => {
-    const data = [];
-    const response = data.length <= 0 ? 404 : 200;
-    expect(response).toBe(404);
+  it("should replace the catalog after ingesting", async () => {
+    const res = mockResponse();
+
+    await updateInformation({} as any, res);
+
+    expect(mockIngest).toHaveBeenCalled();
+    expect(mockReplaceCatalog).toHaveBeenCalledWith(
+      "SP26",
+      [{ Name: "CSE 101", Term: "SP26" }],
+      [{ name: "jane doe", nameKey: "jane doe" }],
+    );
+    expect(mockIngest.mock.invocationCallOrder[0]).toBeLessThan(
+      mockReplaceCatalog.mock.invocationCallOrder[0],
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.send).toHaveBeenCalledWith({ message: "Courses updated" });
   });
 
-  it('searchOneRMP returns data when found', async () => {
-    await testDb.collection('rmpData').insertOne({
-      name: 'John Smith',
-      nameKey: 'john smith',
-      avgRating: 4.5,
+  it("should return 500 when refresh fails", async () => {
+    mockIngest.mockRejectedValue(new Error("refresh failed"));
+    const res = mockResponse();
+
+    await updateInformation({} as any, res);
+
+    expect(mockReplaceCatalog).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.send).toHaveBeenCalledWith({
+      error: "Failed to update courses",
+      message: "refresh failed",
     });
-    
-    const data = await testDb.collection('rmpData').find({ nameKey: 'john smith' }).toArray();
-    const response = data.length <= 0 ? 404 : 200;
-    
-    expect(response).toBe(200);
-    expect(data.length).toBe(1);
   });
 });

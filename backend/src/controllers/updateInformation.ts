@@ -1,19 +1,11 @@
 import { ingest } from "../ingestion/ingest.js";
-import { connectToDB } from "../services/connectToDB.js";
-import type { Db } from "mongodb";
+import { replaceCatalog } from "../services/supabaseRepository.js";
 import type { Request, Response } from "express";
 
 export async function updateInformation(req: Request, res: Response) {
   try {
-    const db: Db = await connectToDB();
-
-    const courseCollection = db.collection("courses");
-    const rmpCollection = db.collection("rmpData");
-
-    await courseCollection.deleteMany({}); // Delete all existing courses for updates
-    await rmpCollection.deleteMany({}); // Delete all existing rmp data for updates
-
-    await ingest(); // Updates
+    const result = await ingest(); // Scrapes updates without mutating the database
+    await replaceCatalog(result.term, result.courses, result.professors);
 
     return res.status(200).send({ message: "Courses updated" });
   } catch (error) {

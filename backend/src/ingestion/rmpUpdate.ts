@@ -1,28 +1,24 @@
-import dotenv from "dotenv";
 import cliProgress from "cli-progress";
-import { connectToDB } from "../services/connectToDB.js";
-import { Db } from "mongodb";
 import {
   searchSchool,
   getProfessorRatingAtSchoolId,
 } from "ratemyprofessor-api";
+import type { Course } from "../models/Course.js";
 import type { RMP } from "../models/RMP.js";
 import { normalizeTeacherKey } from "../utils/normalizeTeacherKey.js";
 
 const schoolName = "University of California San Diego";
 
-export async function rmpUpdate(curTerm: string) {
+export async function rmpUpdate(courses: Course[]) {
 
   const searched = new Set<string>();
-  const db: Db = await connectToDB();
-  const docs = await db.collection("courses").find({ Term: curTerm }).toArray();
 
   const school = await searchSchool(schoolName);
 
   // Add items to searched set 
-  for (const doc of docs) {
+  for (const course of courses) {
 
-    const normalized = normalizeTeacherKey(doc.Teacher);
+    const normalized = normalizeTeacherKey(course.Teacher);
 
     if (normalized.length > 0 && !searched.has(normalized)) {
       searched.add(normalized);
@@ -40,7 +36,7 @@ export async function rmpUpdate(curTerm: string) {
 
   rmpBar.start(searched.size, 0, { name: "" });
 
-  // Collect all RMP data first, then use bulkWrite
+  // Collect all RMP data first, then persist it in batches.
   const rmpDataMap = new Map<string, RMP>();
 
   for (const teacher of searched) {
@@ -66,20 +62,9 @@ export async function rmpUpdate(curTerm: string) {
 
   rmpBar.stop(); // Close TUI
 
-  // Use bulkWrite for efficient batch updates
-  const operations = Array.from(rmpDataMap.entries()).map(([nameKey, rmp]) => ({
-    updateOne: {
-      filter: { nameKey },
-      update: { $set: { rmp } },
-    },
-  }));
-
-  if (operations.length > 0) {
-    const result = await db.collection("courses").bulkWrite(operations, { ordered: false });
-    console.log(`Bulk updated ${result.modifiedCount} courses with RMP data`);
-  } else {
-    console.log("No RMP data to update");
+  for (const course of courses) {
+    course.rmp = rmpDataMap.get(course.nameKey.toLowerCase()) ?? null;
   }
 
-  return;
+  return Array.from(rmpDataMap.values());
 }
