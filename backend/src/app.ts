@@ -7,7 +7,7 @@ import rmpRouter from "./routes/rmpRouter.js";
 import refreshRouter from "./routes/refreshRouter.js";
 import termRouter from "./routes/termRouter.js";
 import healthRouter from "./routes/healthRouter.js";
-import { requireApiSecret } from "./middleware/requireApiSecret.js";
+import { requireAdmin, requireApiBearer } from "./middleware/auth.js";
 
 // Only load .env file in development (Vercel uses environment variables configured in dashboard)
 if (process.env.NODE_ENV !== 'production') {
@@ -34,12 +34,11 @@ app.use(
 
 app.use(express.json());
 app.use(express.static(path.join(process.cwd(), "public")));
-app.use(requireApiSecret);
 
 app.use("/course", courseRouter);
-app.use("/rmp", rmpRouter);
-app.use("/refresh", refreshRouter);
+app.use("/rmp", requireAdmin, rmpRouter);
+app.use("/refresh", requireApiBearer, refreshRouter);
 app.use("/term", termRouter);
-app.use("/health", healthRouter);
+app.use("/health", requireAdmin, healthRouter);
 
 export default app;

@@ -9,7 +9,7 @@
     "start:server": "node dist/src/server.js",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
-    "test": "node --experimental-vm-modules node_modules/.bin/jest --config jest.config.cjs --coverage",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest --config jest.config.cjs",
     "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
     "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
     "typecheck": "tsc --noEmit"
