@@ -14,7 +14,12 @@ export function getCookie(req: Request): Record<string, string> {
       return cookies;
     }
 
-    cookies[rawName] = decodeURIComponent(rawValue.join("="));
+    try {
+      cookies[rawName] = decodeURIComponent(rawValue.join("="));
+    } catch {
+      return cookies;
+    }
+
     return cookies;
   }, {});
 }

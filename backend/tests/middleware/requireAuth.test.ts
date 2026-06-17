@@ -36,7 +36,7 @@ jest.unstable_mockModule("../../src/services/connectToDB.js", () => ({
   }),
 }));
 
-const { requireAdmin, requireUser } = await import("../../src/middleware/requireApiSecret.js");
+const { requireAdmin, requireApiBearer, requireUser } = await import("../../src/middleware/auth.js");
 
 const authCookie = "auth=validtoken";
 
@@ -58,6 +58,20 @@ function appWith(middleware: RequestHandler) {
 describe("auth middleware", () => {
   beforeEach(() => {
     resetAuthState();
+    process.env.CRON_SECRET = "secret123";
+  });
+
+  it("When bearer token matches then machine middleware succeeds", async () => {
+    await request(appWith(requireApiBearer))
+      .get("/protected")
+      .set("Authorization", "Bearer secret123")
+      .expect(200, { ok: true });
+  });
+
+  it("When bearer token is missing then machine middleware returns 401", async () => {
+    await request(appWith(requireApiBearer))
+      .get("/protected")
+      .expect(401, { Message: "Not Authorized" });
   });
 
   it("When auth cookie is missing then user middleware returns 401", async () => {
@@ -117,5 +131,21 @@ describe("auth middleware", () => {
       .get("/protected")
       .set("Cookie", authCookie)
       .expect(500, { Message: "Auth check failed" });
+  });
+
+  it("When auth cookie is malformed then middleware returns 401", async () => {
+    await request(appWith(requireAdmin))
+      .get("/protected")
+      .set("Cookie", "auth=%E0%A4%A")
+      .expect(401, { Message: "Not Authorized" });
+  });
+
+  it("When unrelated cookie is malformed then valid auth still succeeds", async () => {
+    resetAuthState({ roles: [{ role: "admin" }] });
+
+    await request(appWith(requireAdmin))
+      .get("/protected")
+      .set("Cookie", "bad=%E0%A4%A; auth=validtoken")
+      .expect(200, { ok: true });
   });
 });

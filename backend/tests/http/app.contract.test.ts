@@ -178,10 +178,10 @@ describe("app HTTP contracts", () => {
     expect(response.body.checks.database.ok).toBe(false);
   });
 
-  it("When admin requests refresh then catalog update succeeds", async () => {
+  it("When machine bearer requests refresh then catalog update succeeds", async () => {
     await request(app)
       .get("/refresh")
-      .set("Cookie", adminCookie)
+      .set("Authorization", "Bearer test-cron-secret")
       .expect(200, { message: "Courses updated" });
   });
 });

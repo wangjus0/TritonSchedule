@@ -5,6 +5,19 @@ import { getCookie } from "../utils/getCookie.js";
 type AppRole = "user" | "admin";
 type UserRoleRow = { role: AppRole };
 
+export function requireApiBearer(req: Request, res: Response, next: NextFunction) {
+  const expected = process.env.CRON_SECRET;
+  const authHeader = typeof req.headers.authorization === "string"
+    ? req.headers.authorization
+    : "";
+
+  if (!expected || authHeader !== `Bearer ${expected}`) {
+    return res.status(401).send({ Message: "Not Authorized" });
+  }
+
+  return next();
+}
+
 export async function requireUser(req: Request, res: Response, next: NextFunction) {
   return requireAuth(req, res, next, "user");
 }
