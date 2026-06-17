@@ -1,3 +1,6 @@
+const os = require('os');
+const path = require('path');
+
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
@@ -26,7 +29,7 @@ module.exports = {
     '!src/**/*.d.ts',
     '!src/index.ts'
   ],
-  coverageDirectory: 'coverage',
+  coverageDirectory: process.env.COVERAGE_DIR || path.join(os.tmpdir(), 'triton-schedule-backend-coverage'),
   coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
   // ESM support
   extensionsToTreatAsEsm: ['.ts'],

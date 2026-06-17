@@ -1,6 +1,9 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react-swc";
+import os from "os";
 import path from "path";
+
+const coverageDirectory = process.env.COVERAGE_DIR ?? path.join(os.tmpdir(), "triton-schedule-frontend-coverage");
 
 export default defineConfig({
   plugins: [react()],
@@ -11,6 +14,7 @@ export default defineConfig({
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     coverage: {
       provider: "v8",
+      reportsDirectory: coverageDirectory,
       reporter: ["text-summary", "json", "lcov", "html"],
       thresholds: {
         lines: 80,

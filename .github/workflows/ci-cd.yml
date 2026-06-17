@@ -51,6 +51,8 @@ jobs:
           npx tsc --noEmit
 
       - name: Run tests with coverage
+        env:
+          COVERAGE_DIR: ${{ runner.temp }}/frontend-coverage
         run: |
           cd frontend
           npm test
@@ -58,7 +60,7 @@ jobs:
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
         with:
-          directory: ./frontend/coverage
+          directory: ${{ runner.temp }}/frontend-coverage
           flags: frontend
           fail_ci_if_error: false
 
@@ -92,6 +94,8 @@ jobs:
           npx tsc --noEmit
 
       - name: Run tests with coverage
+        env:
+          COVERAGE_DIR: ${{ runner.temp }}/backend-coverage
         run: |
           cd backend
           npm test
@@ -99,7 +103,7 @@ jobs:
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
         with:
-          directory: ./backend/coverage
+          directory: ${{ runner.temp }}/backend-coverage
           flags: backend
           fail_ci_if_error: false
 
