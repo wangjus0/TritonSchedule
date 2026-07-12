@@ -28,16 +28,30 @@ Go to the project directory
   cd TritonSchedule
 ```
 
-Install dependencies
+Configure environment variables
 
 ```bash
-  npm install
+  cp backend/.env.example backend/.env
+  cp frontend/.env.example frontend/.env
 ```
+
+Fill in your Supabase credentials (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+`SUPABASE_ANON_KEY`, `DATABASE_URL`) plus a shared `API_KEY`/`VITE_API_KEY` and
+`JWT_SECRET`. See `backend/.env.example` and `frontend/.env.example` for the full list.
+
+Install dependencies and set up the workspace
+
+```bash
+  npm run setup
+```
+
+`npm run setup` installs dependencies and starts the local Supabase stack. Use
+`npm run setup -- --local` to boot Supabase with the Supabase CLI, or
+`npm run setup -- --check` to validate your environment without installing.
+Run `npm run setdown` (alias `npm run teardown`) to stop the local Supabase stack.
 
 Start the application
 
 ```bash
   npm run dev
 ```
-
-### [Additonal dev environment set up (WIP)]
