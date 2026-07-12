@@ -30,9 +30,11 @@ const CalendarContext = createContext<CalendarContextType | undefined>(undefined
 export function CalendarProvider({ children }: { children: ReactNode }) {
   const { user, isConfigured, isLoading: isAuthLoading } = useAuth();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [hydratedKey, setHydratedKey] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const hasMigratedGuestRef = useRef(false);
+
+  const storageKey = user && isConfigured ? `user:${user.id}` : "guest";
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -42,7 +44,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     const hydrate = async () => {
-      setIsHydrated(false);
+      setHydratedKey(null);
 
       if (user && isConfigured) {
         try {
@@ -74,7 +76,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
       }
 
       if (!cancelled) {
-        setIsHydrated(true);
+        setHydratedKey(user && isConfigured ? `user:${user.id}` : "guest");
       }
     };
 
@@ -86,7 +88,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
   }, [user?.id, isConfigured, isAuthLoading]);
 
   useEffect(() => {
-    if (!isHydrated) {
+    if (hydratedKey !== storageKey) {
       return;
     }
 
@@ -99,7 +101,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
     }
 
     saveGuestSchedule(events);
-  }, [events, user?.id, isConfigured, isHydrated]);
+  }, [events, user?.id, isConfigured, hydratedKey, storageKey]);
 
   const addEvent = (event: CalendarEvent) => {
     setEvents((prev) => [...prev, event]);

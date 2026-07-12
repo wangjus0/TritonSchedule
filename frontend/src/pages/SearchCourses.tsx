@@ -173,7 +173,7 @@ export default function SearchCourses() {
 
     const loadActiveTerm = async () => {
       try {
-        const response = await fetchApi("/term", createApiRequestInit(controller.signal));
+        const response = await fetchApi("/term/active", createApiRequestInit(controller.signal));
         if (!response.ok) {
           return;
         }

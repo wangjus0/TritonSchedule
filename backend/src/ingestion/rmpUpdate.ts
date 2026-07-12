@@ -63,9 +63,15 @@ export async function rmpUpdate(curTerm: string) {
 
   if (rmpDataMap.size > 0) {
     await upsertRmpRecords(Array.from(rmpDataMap.values()));
-    await Promise.all(
-      Array.from(rmpDataMap.entries()).map(([nameKey, rmp]) => updateCourseRmp(nameKey, rmp)),
-    );
+
+    const entries = Array.from(rmpDataMap.entries());
+    const concurrency = 10;
+
+    for (let i = 0; i < entries.length; i += concurrency) {
+      const batch = entries.slice(i, i + concurrency);
+      await Promise.all(batch.map(([nameKey, rmp]) => updateCourseRmp(nameKey, rmp)));
+    }
+
     console.log(`Updated ${rmpDataMap.size} professor ratings`);
   } else {
     console.log("No RMP data to update");
