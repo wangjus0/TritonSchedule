@@ -18,10 +18,10 @@ export type EventColor = {
 };
 
 export const eventColors: EventColor[] = [
-  { label: "Blue", value: "hsl(221, 83%, 53%)" },
-  { label: "Green", value: "hsl(142, 71%, 45%)" },
-  { label: "Purple", value: "hsl(262, 83%, 58%)" },
-  { label: "Orange", value: "hsl(25, 95%, 53%)" },
-  { label: "Pink", value: "hsl(340, 82%, 52%)" },
-  { label: "Teal", value: "hsl(180, 70%, 45%)" },
+  { label: "Triton Blue", value: "#00629b" },
+  { label: "Purple", value: "#7a48c9" },
+  { label: "Pink", value: "#c4317f" },
+  { label: "Orange", value: "#b8500a" },
+  { label: "Teal", value: "#1f7d7a" },
+  { label: "Green", value: "#2a8f3f" },
 ];

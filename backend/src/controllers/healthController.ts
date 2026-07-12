@@ -1,16 +1,15 @@
 import type { Request, Response } from "express";
-import { pingDatabase as defaultPingDatabase } from "../services/connectToDB.js";
+import { pingSupabase } from "../services/supabaseStore.js";
 
-const REQUIRED_ENV_VARS = ["CRON_SECRET", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"] as const;
+const REQUIRED_ENV_VARS = ["API_KEY", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "JWT_SECRET"] as const;
 
 /**
  * Check health of the service
  * @param _req Express request (unused)
  * @param res Express response
- * @param dbFn Optional override for database ping (for testing only)
+ * @param pingFn Optional override for testing only
  */
-export async function checkHealth(_req: Request, res: Response, dbFn?: () => Promise<any>) {
-  const pingDatabase = dbFn ?? defaultPingDatabase;
+export async function checkHealth(_req: Request, res: Response, pingFn: () => Promise<unknown> = pingSupabase) {
   const startedAt = Date.now();
 
   const envChecks = REQUIRED_ENV_VARS.map((name) => ({
@@ -21,10 +20,9 @@ export async function checkHealth(_req: Request, res: Response, dbFn?: () => Pro
   const missingEnv = envChecks.filter((entry) => !entry.ok).map((entry) => entry.name);
 
   try {
-    const pingResult = await pingDatabase();
-    const dbOk = pingResult.ok === 1;
+    await pingFn();
 
-    const healthy = missingEnv.length === 0 && dbOk;
+    const healthy = missingEnv.length === 0;
 
     return res.status(healthy ? 200 : 503).json({
       status: healthy ? "ok" : "degraded",
@@ -35,7 +33,7 @@ export async function checkHealth(_req: Request, res: Response, dbFn?: () => Pro
           missing: missingEnv,
         },
         database: {
-          ok: dbOk,
+          ok: true,
         },
       },
       uptimeSeconds: Math.floor(process.uptime()),

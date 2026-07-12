@@ -1,7 +1,7 @@
-import { searchCourses } from "../services/supabaseRepository.js";
+import { searchCourses } from "../services/supabaseStore.js";
+import type { Request, Response } from 'express';
 
-export async function searchForClass(req: any, res: any) {
-
+export async function searchForClass(req: Request, res: Response) {
   const queryParams = req.query;
 
   const term = typeof queryParams.term === "string" ? queryParams.term.trim() : "";

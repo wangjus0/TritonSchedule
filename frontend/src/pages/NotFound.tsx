@@ -1,5 +1,7 @@
-import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { PublicHeader } from "@/components/PublicHeader";
+import { Button } from "@/components/ui/button";
 
 const NotFound = () => {
   const location = useLocation();
@@ -9,14 +11,33 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">404</h1>
-        <p className="mb-4 text-xl text-muted-foreground">Oops! Page not found</p>
-        <a href="/" className="text-primary underline hover:text-primary/90">
-          Return to Home
-        </a>
-      </div>
+    <div className="min-h-screen page-shell auth-shell">
+      <PublicHeader />
+
+      <main className="auth-page mx-auto w-full max-w-6xl">
+        <section className="auth-copy">
+          <h1 className="auth-title">Page not found</h1>
+          <p className="auth-subtitle">That route is not part of TritonSchedule.</p>
+        </section>
+
+        <div className="auth-card w-full text-center">
+          <p className="data-mono text-sm font-semibold text-[var(--design-primary)]">404</p>
+          <p className="mt-3 text-[22px] font-semibold text-[var(--design-ink)]">
+            Head back to planning
+          </p>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
+            Search courses or return home from here.
+          </p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Button asChild className="aqua-btn border-0">
+              <Link to="/search">Search courses</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/">Home</Link>
+            </Button>
+          </div>
+        </div>
+      </main>
     </div>
   );
 };

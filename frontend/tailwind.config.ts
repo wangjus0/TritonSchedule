@@ -13,6 +13,11 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Helvetica", "Arial", "sans-serif"],
+        display: ['"Space Grotesk"', "Inter", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+        mono: ['"JetBrains Mono"', "ui-monospace", "SF Mono", "Menlo", "monospace"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -57,11 +62,32 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        /* Decorative accents only, never CTAs */
+        sticker: {
+          sky: "#00629b",
+          purple: "#2d84bd",
+          pink: "#00476f",
+          orange: "#5aa7d1",
+          teal: "#00324f",
+          green: "#e7f2fa",
+        },
+        ink: {
+          DEFAULT: "var(--design-ink)",
+          secondary: "var(--design-text)",
+          muted: "var(--design-muted)",
+          faint: "var(--design-faint)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 7px)",
+        xl: "calc(var(--radius) + 4px)",
+      },
+      boxShadow: {
+        "ds-sm": "var(--shadow-sm)",
+        "ds-md": "var(--shadow-md)",
+        "ds-lg": "var(--shadow-lg)",
       },
       keyframes: {
         "accordion-down": {

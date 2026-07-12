@@ -1,0 +1,7 @@
+"$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
+
+[scripts]
+setup = "npm ci && npm --prefix frontend ci && npm --prefix backend ci"
+run = "./node_modules/.bin/concurrently -n client,server -c blue,grey \"npm --prefix frontend run dev -- --port ${CONDUCTOR_PORT:-8080}\" \"PORT=3000 npm --prefix backend run build && PORT=3000 npm --prefix backend run start:server\""
+archive = "true"
+run_mode = "nonconcurrent"

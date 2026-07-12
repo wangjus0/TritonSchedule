@@ -1,0 +1,147 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "Triton Schedule home" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - img [ref=e8]
+          - generic [ref=e15]: TritonSchedule
+        - navigation "Primary navigation" [ref=e16]:
+          - link "Search" [ref=e17] [cursor=pointer]:
+            - /url: /search
+          - link "Schedule" [ref=e18] [cursor=pointer]:
+            - /url: /calendar
+        - navigation "Account navigation" [ref=e19]:
+          - link "Log in" [ref=e20] [cursor=pointer]:
+            - /url: /login
+          - link "Sign up" [ref=e21] [cursor=pointer]:
+            - /url: /signup
+            - generic [ref=e22]: Sign up
+            - img [ref=e23]
+    - generic [ref=e26]:
+      - generic [ref=e27]:
+        - heading "Plan your UCSD quarter, faster." [level=1] [ref=e28]:
+          - generic [ref=e29]: Plan your UCSD quarter,
+          - generic [ref=e30]: faster.
+        - paragraph [ref=e31]: Search live courses, compare sections side by side, and place the best meetings into a weekly grid — no spreadsheet required.
+        - generic [ref=e32]:
+          - generic [ref=e33]: Search UCSD courses
+          - img [ref=e34]
+          - searchbox "Search UCSD courses" [ref=e37]
+          - button "Search" [ref=e38] [cursor=pointer]:
+            - generic [ref=e39]: Search
+            - img [ref=e40]
+        - generic "Example searches" [ref=e42]:
+          - generic [ref=e43]: Popular searches
+          - button "CSE 110" [ref=e44] [cursor=pointer]
+          - button "MATH 20C" [ref=e45] [cursor=pointer]
+          - button "COGS 108" [ref=e46] [cursor=pointer]
+      - complementary "Weekly schedule preview" [ref=e47]:
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - paragraph [ref=e50]: Course workspace
+            - heading "SP26 draft week" [level=2] [ref=e51]
+          - generic [ref=e52]: 3 courses
+        - generic [ref=e53]:
+          - generic [ref=e54]:
+            - generic [ref=e55]:
+              - img [ref=e56]
+              - generic [ref=e59]: CSE 110
+            - generic [ref=e60]:
+              - generic [ref=e61]:
+                - generic [ref=e62]: CSE 110
+                - generic [ref=e63]:
+                  - strong [ref=e64]: Software Engineering
+                  - paragraph [ref=e65]: Mon Wed Fri, 10a
+              - generic [ref=e66]:
+                - generic [ref=e67]: MATH 20C
+                - generic [ref=e68]:
+                  - strong [ref=e69]: Vector Calculus
+                  - paragraph [ref=e70]: Tue Thu, 12p
+              - generic [ref=e71]:
+                - generic [ref=e72]: COGS 108
+                - generic [ref=e73]:
+                  - strong [ref=e74]: Data Science
+                  - paragraph [ref=e75]: Fri, 2p
+          - generic "Example weekly schedule" [ref=e76]:
+            - generic [ref=e77]:
+              - generic [ref=e78]: Mon
+              - generic [ref=e79]:
+                - strong [ref=e80]: CSE 110
+                - paragraph [ref=e81]: 10a
+            - generic [ref=e82]:
+              - generic [ref=e83]: Tue
+              - generic [ref=e84]:
+                - strong [ref=e85]: MATH 20C
+                - paragraph [ref=e86]: 12p
+            - generic [ref=e87]:
+              - generic [ref=e88]: Wed
+              - generic [ref=e89]:
+                - strong [ref=e90]: CSE 110
+                - paragraph [ref=e91]: 10a
+            - generic [ref=e92]:
+              - generic [ref=e93]: Thu
+              - generic [ref=e94]:
+                - strong [ref=e95]: MATH 20C
+                - paragraph [ref=e96]: 12p
+            - generic [ref=e97]:
+              - generic [ref=e98]: Fri
+              - generic [ref=e99]:
+                - strong [ref=e100]: COGS 108
+                - paragraph [ref=e101]: 2p
+        - generic [ref=e102]: Conflicts stay visible while you compare sections.
+    - region "What TritonSchedule helps with" [ref=e103]:
+      - generic [ref=e104]:
+        - generic [ref=e105]:
+          - generic [ref=e106]: Everything in one place
+          - heading "Decide faster, before enrollment." [level=2] [ref=e107]
+          - paragraph [ref=e108]: Course discovery, section context, and weekly fit — together, so you stop juggling tabs and spreadsheets.
+        - generic [ref=e109]:
+          - article [ref=e110]:
+            - generic [ref=e111]:
+              - generic [ref=e112]: "01"
+              - img [ref=e113]
+            - generic [ref=e116]:
+              - heading "Find the right course" [level=3] [ref=e117]
+              - paragraph [ref=e118]: Start with a course, department, or instructor and keep the live UCSD catalog one keystroke away.
+          - article [ref=e119]:
+            - generic [ref=e120]:
+              - generic [ref=e121]: "02"
+              - img [ref=e122]
+            - generic [ref=e126]:
+              - heading "Compare sections" [level=3] [ref=e127]
+              - paragraph [ref=e128]: Scan meeting days, section type, seats, and professor ratings before you commit to anything.
+          - article [ref=e129]:
+            - generic [ref=e130]:
+              - generic [ref=e131]: "03"
+              - img [ref=e132]
+            - generic [ref=e141]:
+              - heading "Shape the week" [level=3] [ref=e142]
+              - paragraph [ref=e143]: Drop sections into a weekly grid and swap them instantly as your plan changes.
+    - region "Start planning" [ref=e144]:
+      - generic [ref=e147]:
+        - generic [ref=e148]:
+          - heading "Build your quarter in minutes." [level=2] [ref=e149]
+          - paragraph [ref=e150]: No account needed to start — search live courses and draft a week right now.
+        - generic [ref=e151]:
+          - link "Start planning" [ref=e152] [cursor=pointer]:
+            - /url: /search
+            - text: Start planning
+            - img [ref=e153]
+          - link "View schedule" [ref=e155] [cursor=pointer]:
+            - /url: /calendar
+            - img [ref=e156]
+            - text: View schedule
+    - contentinfo [ref=e161]:
+      - generic [ref=e162]:
+        - paragraph [ref=e163]: © 2026 TritonSchedule · Built for UCSD students.
+        - generic [ref=e164]:
+          - link "Search" [ref=e165] [cursor=pointer]:
+            - /url: /search
+          - link "Schedule" [ref=e166] [cursor=pointer]:
+            - /url: /calendar
+          - link "Log in" [ref=e167] [cursor=pointer]:
+            - /url: /login

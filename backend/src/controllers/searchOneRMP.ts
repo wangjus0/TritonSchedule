@@ -1,12 +1,11 @@
-import { searchProfessor } from "../services/supabaseRepository.js";
+import { searchRmp } from "../services/supabaseStore.js";
 import { normalizeTeacherKey } from "../utils/normalizeTeacherKey.js";
 
 export async function searchOneRMP(req: any, res: any) {
-
   const queryParams = req.query;
 
   if (queryParams.teacher == null) {
-    const data = await searchProfessor();
+    const data = await searchRmp();
     return res.send({ Data: data });
   }
 
@@ -14,7 +13,7 @@ export async function searchOneRMP(req: any, res: any) {
 
   const normalized = normalizeTeacherKey(teacher);
 
-  const data = await searchProfessor(normalized);
+  const data = await searchRmp(normalized);
 
   if (data.length <= 0) {
     return res.status(404).send('Item not found');

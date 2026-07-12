@@ -1,8 +1,24 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { useAuth } from "@/context/AuthContext";
+import {
+  loadGuestSchedule,
+  loadUserSchedule,
+  saveGuestSchedule,
+  saveUserSchedule,
+} from "@/lib/scheduleStorage";
 import { CalendarEvent } from "@/types/calendar";
 
 interface CalendarContextType {
   events: CalendarEvent[];
+  isGuest: boolean;
+  isSyncing: boolean;
   addEvent: (event: CalendarEvent) => void;
   updateEvent: (id: string, event: Partial<CalendarEvent>) => void;
   deleteEvent: (id: string) => void;
@@ -10,45 +26,80 @@ interface CalendarContextType {
 }
 
 const CalendarContext = createContext<CalendarContextType | undefined>(undefined);
-const CALENDAR_EVENTS_STORAGE_KEY = "calendarEvents";
-
-function loadStoredEvents(): CalendarEvent[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  const storedEvents = window.localStorage.getItem(CALENDAR_EVENTS_STORAGE_KEY);
-  if (!storedEvents) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(storedEvents) as CalendarEvent[];
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed.filter((event) => {
-      return (
-        typeof event?.id === "string" &&
-        typeof event?.title === "string" &&
-        typeof event?.dayOfWeek === "string" &&
-        typeof event?.startTime === "string" &&
-        typeof event?.endTime === "string" &&
-        typeof event?.color === "string"
-      );
-    });
-  } catch {
-    return [];
-  }
-}
 
 export function CalendarProvider({ children }: { children: ReactNode }) {
-  const [events, setEvents] = useState<CalendarEvent[]>(() => loadStoredEvents());
+  const { user, isConfigured, isLoading: isAuthLoading } = useAuth();
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const hasMigratedGuestRef = useRef(false);
 
   useEffect(() => {
-    window.localStorage.setItem(CALENDAR_EVENTS_STORAGE_KEY, JSON.stringify(events));
-  }, [events]);
+    if (isAuthLoading) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const hydrate = async () => {
+      setIsHydrated(false);
+
+      if (user && isConfigured) {
+        try {
+          const remoteEvents = await loadUserSchedule(user.id);
+
+          if (cancelled) {
+            return;
+          }
+
+          if (remoteEvents === null) {
+            const guestEvents = loadGuestSchedule();
+            setEvents(guestEvents);
+
+            if (guestEvents.length > 0 && !hasMigratedGuestRef.current) {
+              hasMigratedGuestRef.current = true;
+              await saveUserSchedule(user.id, guestEvents);
+            }
+          } else {
+            setEvents(remoteEvents);
+          }
+        } catch {
+          if (!cancelled) {
+            setEvents(loadGuestSchedule());
+          }
+        }
+      } else {
+        setEvents(loadGuestSchedule());
+        hasMigratedGuestRef.current = false;
+      }
+
+      if (!cancelled) {
+        setIsHydrated(true);
+      }
+    };
+
+    void hydrate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, isConfigured, isAuthLoading]);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    if (user && isConfigured) {
+      setIsSyncing(true);
+      void saveUserSchedule(user.id, events)
+        .catch(() => undefined)
+        .finally(() => setIsSyncing(false));
+      return;
+    }
+
+    saveGuestSchedule(events);
+  }, [events, user?.id, isConfigured, isHydrated]);
 
   const addEvent = (event: CalendarEvent) => {
     setEvents((prev) => [...prev, event]);
@@ -56,9 +107,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
 
   const updateEvent = (id: string, updatedFields: Partial<CalendarEvent>) => {
     setEvents((prev) =>
-      prev.map((event) =>
-        event.id === id ? { ...event, ...updatedFields } : event
-      )
+      prev.map((event) => (event.id === id ? { ...event, ...updatedFields } : event))
     );
   };
 
@@ -72,7 +121,15 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
 
   return (
     <CalendarContext.Provider
-      value={{ events, addEvent, updateEvent, deleteEvent, deleteEventsByCourseId }}
+      value={{
+        events,
+        isGuest: !user,
+        isSyncing,
+        addEvent,
+        updateEvent,
+        deleteEvent,
+        deleteEventsByCourseId,
+      }}
     >
       {children}
     </CalendarContext.Provider>

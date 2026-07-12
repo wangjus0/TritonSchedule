@@ -1,0 +1,103 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "Triton Schedule home" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - img [ref=e8]
+          - generic [ref=e14]: TritonSchedule
+        - navigation "Primary navigation" [ref=e15]:
+          - link "Search" [ref=e16] [cursor=pointer]:
+            - /url: /search
+          - link "Schedule" [ref=e17] [cursor=pointer]:
+            - /url: /calendar
+        - navigation "Account navigation" [ref=e18]:
+          - link "Log in" [ref=e19] [cursor=pointer]:
+            - /url: /login
+          - link "Sign up" [ref=e20] [cursor=pointer]:
+            - /url: /signup
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - heading "Build a UCSD schedule before enrollment" [level=1] [ref=e24]:
+          - generic [ref=e25]: Build a UCSD schedule
+          - generic [ref=e26]: before enrollment
+        - paragraph [ref=e27]: Search live course data, compare sections, and build a weekly plan while the meeting times are still easy to reason about.
+        - generic [ref=e28]:
+          - img [ref=e29]
+          - searchbox "Search UCSD courses" [ref=e32]: CSE 110
+          - button "Search" [ref=e33] [cursor=pointer]:
+            - img [ref=e34]
+        - generic "Example searches" [ref=e36]:
+          - generic [ref=e37]: Popular searches
+          - button "CSE 110" [active] [ref=e38] [cursor=pointer]
+          - button "MATH 20C" [ref=e39] [cursor=pointer]
+          - button "COGS 108" [ref=e40] [cursor=pointer]
+      - complementary "Schedule planning preview" [ref=e41]:
+        - generic [ref=e42]:
+          - generic [ref=e43]:
+            - paragraph [ref=e44]: Planning preview
+            - heading "Search beside schedule" [level=2] [ref=e45]
+          - generic [ref=e46]: SP26
+        - generic [ref=e47]:
+          - generic [ref=e48]:
+            - generic [ref=e49]:
+              - img [ref=e50]
+              - generic [ref=e53]: CSE 110
+            - generic [ref=e54]:
+              - generic [ref=e55]: CSE 110
+              - generic [ref=e56]:
+                - strong [ref=e57]: Software Engineering
+                - paragraph [ref=e58]: Mon Wed Fri
+            - generic [ref=e59]:
+              - generic [ref=e60]: MATH 20C
+              - generic [ref=e61]:
+                - strong [ref=e62]: Vector Calculus
+                - paragraph [ref=e63]: Tue Thu
+            - generic [ref=e64]:
+              - generic [ref=e65]: COGS 108
+              - generic [ref=e66]:
+                - strong [ref=e67]: Data Science
+                - paragraph [ref=e68]: Fri
+          - generic "Example weekly schedule" [ref=e69]:
+            - generic [ref=e70]:
+              - generic [ref=e71]: Mon
+              - generic [ref=e72]:
+                - strong [ref=e73]: "110"
+                - generic [ref=e74]: 10a
+            - generic [ref=e75]:
+              - generic [ref=e76]: Tue
+              - generic [ref=e77]:
+                - strong [ref=e78]: 20C
+                - generic [ref=e79]: 12p
+            - generic [ref=e80]:
+              - generic [ref=e81]: Wed
+              - generic [ref=e82]:
+                - strong [ref=e83]: "110"
+                - generic [ref=e84]: 10a
+            - generic [ref=e86]: Thu
+            - generic [ref=e87]:
+              - generic [ref=e88]: Fri
+              - generic [ref=e89]:
+                - strong [ref=e90]: "108"
+                - generic [ref=e91]: 2p
+        - generic [ref=e92]:
+          - img [ref=e93]
+          - generic [ref=e95]: Meeting patterns, sections, and notes stay connected while you adjust.
+    - region "Planning workflow" [ref=e96]:
+      - generic [ref=e97]:
+        - generic [ref=e98]:
+          - heading "Plan with the moving parts in view." [level=2] [ref=e99]
+          - paragraph [ref=e100]: TritonSchedule keeps course discovery and weekly planning on the same surface, so changes stay cheap.
+        - generic [ref=e101]:
+          - article [ref=e102]:
+            - heading "Catalog" [level=3] [ref=e103]
+            - paragraph [ref=e104]: Start with a course, department, or instructor and keep matching sections close.
+          - article [ref=e105]:
+            - heading "Tradeoffs" [level=3] [ref=e106]
+            - paragraph [ref=e107]: Scan meeting days, section types, and professor context before adding anything.
+          - article [ref=e108]:
+            - heading "Schedule" [level=3] [ref=e109]
+            - paragraph [ref=e110]: Place sections into the week and keep swaps lightweight as enrollment changes.

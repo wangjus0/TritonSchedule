@@ -1,0 +1,47 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "Triton Schedule home" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - img [ref=e8]
+        - navigation "Account navigation" [ref=e18]:
+          - link "Sign up" [ref=e20] [cursor=pointer]:
+            - /url: /signup
+    - generic [ref=e23]:
+      - heading "Build a UCSD schedule that holds up" [level=1] [ref=e24]:
+        - generic [ref=e25]: Build a UCSD schedule
+        - generic [ref=e26]: that holds up
+      - paragraph [ref=e27]: Search live course data, compare sections, and move the right meetings into a weekly plan before enrollment gets messy.
+      - generic [ref=e28]:
+        - img [ref=e29]
+        - searchbox "Search UCSD courses" [ref=e32]: CSE 110
+        - button "Search" [ref=e33] [cursor=pointer]:
+          - img [ref=e34]
+      - generic "Example searches" [ref=e36]:
+        - generic [ref=e37]: Popular searches
+        - button "CSE 110" [active] [ref=e38] [cursor=pointer]
+        - button "MATH 20C" [ref=e39] [cursor=pointer]
+        - button "COGS 108" [ref=e40] [cursor=pointer]
+    - region "Planning workflow" [ref=e71]:
+      - generic [ref=e72]:
+        - heading "From search to schedule in one pass." [level=2] [ref=e73]
+        - list [ref=e74]:
+          - listitem [ref=e75]:
+            - generic [ref=e76]: "1"
+            - generic [ref=e77]:
+              - heading "Search the catalog" [level=3] [ref=e78]
+              - paragraph [ref=e79]: Start with a course, department, or instructor and jump straight into matching sections.
+          - listitem [ref=e80]:
+            - generic [ref=e81]: "2"
+            - generic [ref=e82]:
+              - heading "Compare the tradeoffs" [level=3] [ref=e83]
+              - paragraph [ref=e84]: Keep meeting days, section types, and professor context visible before you commit.
+          - listitem [ref=e85]:
+            - generic [ref=e86]: "3"
+            - generic [ref=e87]:
+              - heading "Send it to the week" [level=3] [ref=e88]
+              - paragraph [ref=e89]: Add sections to your schedule and keep swaps lightweight as plans change.

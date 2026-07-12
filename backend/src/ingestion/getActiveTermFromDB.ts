@@ -1,5 +1,5 @@
-import { getActiveTermRow } from "../services/supabaseRepository.js";
+import { getActiveTerm } from "../services/supabaseStore.js";
 
 export async function getActiveTermFromDB() {
-  return getActiveTermRow();
+  return getActiveTerm();
 }

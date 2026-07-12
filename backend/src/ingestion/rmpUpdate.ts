@@ -1,24 +1,24 @@
 import cliProgress from "cli-progress";
+import { listCoursesByTerm, updateCourseRmp, upsertRmpRecords } from "../services/supabaseStore.js";
 import {
   searchSchool,
   getProfessorRatingAtSchoolId,
 } from "ratemyprofessor-api";
-import type { Course } from "../models/Course.js";
 import type { RMP } from "../models/RMP.js";
 import { normalizeTeacherKey } from "../utils/normalizeTeacherKey.js";
 
 const schoolName = "University of California San Diego";
 
-export async function rmpUpdate(courses: Course[]) {
-
+export async function rmpUpdate(curTerm: string) {
   const searched = new Set<string>();
+  const docs = await listCoursesByTerm(curTerm);
 
   const school = await searchSchool(schoolName);
 
   // Add items to searched set 
-  for (const course of courses) {
+  for (const doc of docs) {
 
-    const normalized = normalizeTeacherKey(course.Teacher);
+    const normalized = normalizeTeacherKey(doc.Teacher);
 
     if (normalized.length > 0 && !searched.has(normalized)) {
       searched.add(normalized);
@@ -36,7 +36,6 @@ export async function rmpUpdate(courses: Course[]) {
 
   rmpBar.start(searched.size, 0, { name: "" });
 
-  // Collect all RMP data first, then persist it in batches.
   const rmpDataMap = new Map<string, RMP>();
 
   for (const teacher of searched) {
@@ -62,9 +61,14 @@ export async function rmpUpdate(courses: Course[]) {
 
   rmpBar.stop(); // Close TUI
 
-  for (const course of courses) {
-    course.rmp = rmpDataMap.get(course.nameKey.toLowerCase()) ?? null;
+  if (rmpDataMap.size > 0) {
+    await upsertRmpRecords(Array.from(rmpDataMap.values()));
+    await Promise.all(
+      Array.from(rmpDataMap.entries()).map(([nameKey, rmp]) => updateCourseRmp(nameKey, rmp)),
+    );
+    console.log(`Updated ${rmpDataMap.size} professor ratings`);
+  } else {
+    console.log("No RMP data to update");
   }
 
-  return Array.from(rmpDataMap.values());
 }

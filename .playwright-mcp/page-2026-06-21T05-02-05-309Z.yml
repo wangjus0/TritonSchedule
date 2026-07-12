@@ -1,0 +1,43 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "Triton Schedule home" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - img [ref=e8]
+        - navigation "Account navigation" [ref=e14]:
+          - link "Sign up" [ref=e15] [cursor=pointer]:
+            - /url: /signup
+    - generic [ref=e18]:
+      - heading "Plan your UCSD week before enrollment" [level=1] [ref=e19]:
+        - generic [ref=e20]: Plan your UCSD week before enrollment
+      - paragraph [ref=e21]: Search live course data, compare sections, and build a weekly plan while meeting times are still easy to reason about.
+      - generic [ref=e22]:
+        - img [ref=e23]
+        - searchbox "Search UCSD courses" [ref=e26]
+        - button "Search" [ref=e27] [cursor=pointer]:
+          - text: Search
+          - img [ref=e28]
+      - generic "Example searches" [ref=e30]:
+        - generic [ref=e31]: Popular searches
+        - button "CSE 110" [ref=e32] [cursor=pointer]
+        - button "MATH 20C" [ref=e33] [cursor=pointer]
+        - button "COGS 108" [ref=e34] [cursor=pointer]
+    - region "Planning workflow" [ref=e35]:
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - heading "Plan with the moving parts in view." [level=2] [ref=e38]
+          - paragraph [ref=e39]: TritonSchedule keeps discovery and weekly planning on the same surface, so changes stay cheap.
+        - generic [ref=e40]:
+          - article [ref=e41]:
+            - heading "Search" [level=3] [ref=e42]
+            - paragraph [ref=e43]: Start with a course, department, or instructor and keep matching sections close.
+          - article [ref=e44]:
+            - heading "Compare" [level=3] [ref=e45]
+            - paragraph [ref=e46]: Scan meeting days, section types, and professor context before adding anything.
+          - article [ref=e47]:
+            - heading "Place" [level=3] [ref=e48]
+            - paragraph [ref=e49]: Place sections into the week and keep swaps lightweight as enrollment changes.

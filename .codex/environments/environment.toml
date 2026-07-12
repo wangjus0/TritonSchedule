@@ -1,0 +1,14 @@
+version = 1
+name = "TritonSchedule"
+
+[setup]
+script = '''
+set -e
+npm run setup
+'''
+
+[cleanup]
+script = '''
+set -e
+npm run setdown
+'''
