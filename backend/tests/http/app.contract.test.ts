@@ -186,6 +186,16 @@ describe("app HTTP contracts", () => {
 			.expect(404, "Item not found");
 	});
 
+	it("When professor storage fails then it returns a generic 500", async () => {
+		mockSearchProfessor.mockRejectedValue(new Error("database unavailable"));
+
+		await request(app)
+			.get("/rmp")
+			.query({ teacher: "Jane Doe" })
+			.set("Cookie", adminCookie)
+			.expect(500, { message: "Internal server error" });
+	});
+
 	it("When admin requests health then healthy status is returned", async () => {
 		const response = await request(app)
 			.get("/health")

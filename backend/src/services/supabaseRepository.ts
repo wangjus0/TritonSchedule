@@ -1,6 +1,7 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { Course } from "../models/Course.js";
 import type { RMP } from "../models/RMP.js";
+import type { Section } from "../models/Section.js";
 import type { Term } from "../models/Term.js";
 import { connectToDB } from "./connectToDB.js";
 
@@ -58,21 +59,35 @@ function isCourseRow(row: unknown): row is CourseRow {
 	);
 }
 
+function normalizeSection(value: unknown): Section | null {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+	const section = value as Record<string, unknown>;
+	return {
+		Days: typeof section.Days === "string" ? section.Days : "",
+		Time: typeof section.Time === "string" ? section.Time : "",
+		Location: typeof section.Location === "string" ? section.Location : "",
+	};
+}
+
+function normalizeSections(value: unknown): Section[] {
+	if (!Array.isArray(value)) return [];
+	return value
+		.map(normalizeSection)
+		.filter((section): section is Section => section !== null);
+}
+
 function toCourseDocument(row: CourseRow): Course & { id: string } {
 	return {
 		id: row.id,
 		Name: row.name,
 		Term: row.term,
 		Teacher: row.teacher,
-		Lecture: row.lecture as Course["Lecture"],
-		Labs: (Array.isArray(row.labs) ? row.labs : []) as Course["Labs"],
-		Discussions: (Array.isArray(row.discussions)
-			? row.discussions
-			: []) as Course["Discussions"],
-		Midterms: (Array.isArray(row.midterms)
-			? row.midterms
-			: []) as Course["Midterms"],
-		Final: row.final as Course["Final"],
+		Lecture: normalizeSection(row.lecture),
+		Labs: normalizeSections(row.labs),
+		Discussions: normalizeSections(row.discussions),
+		Midterms: normalizeSections(row.midterms),
+		Final: normalizeSection(row.final),
 		nameKey: row.name_key,
 		rmp: row.rmp,
 	};

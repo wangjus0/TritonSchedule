@@ -16,6 +16,19 @@ if (process.env.NODE_ENV !== "production") {
 
 const app = express();
 
+const catalogErrorHandler: express.ErrorRequestHandler = (
+	error,
+	_req,
+	res,
+	_next,
+) => {
+	console.error("Catalog request failed", error);
+	res.status(503).json({
+		code: "CATALOG_UNAVAILABLE",
+		message: "Course catalog is temporarily unavailable",
+	});
+};
+
 const allowedOrigins = [
 	"https://tritonschedule.com",
 	"https://triton-schedule-alpha.vercel.app",
@@ -36,13 +49,13 @@ app.use(express.json());
 app.use(express.static(path.join(process.cwd(), "public")));
 
 app.use("/course", courseRouter);
+app.use("/course", catalogErrorHandler);
 app.use("/rmp", requireAdmin, rmpRouter);
 app.use("/refresh", requireApiBearer, refreshRouter);
 app.use("/term", termRouter);
+app.use("/term", catalogErrorHandler);
 app.use("/health", requireAdmin, healthRouter);
 
-// Keep catalog failures machine-readable so the client can distinguish an
-// unavailable data source from a valid empty result.
 app.use(
 	(
 		error: unknown,
@@ -50,11 +63,8 @@ app.use(
 		res: express.Response,
 		_next: express.NextFunction,
 	) => {
-		console.error("Catalog request failed", error);
-		return res.status(503).json({
-			code: "CATALOG_UNAVAILABLE",
-			message: "Course catalog is temporarily unavailable",
-		});
+		console.error("Request failed", error);
+		return res.status(500).json({ message: "Internal server error" });
 	},
 );
 
