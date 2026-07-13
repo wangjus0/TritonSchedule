@@ -9,8 +9,8 @@ type CourseRow = {
 	id: string;
 	name: string;
 	term: string;
-	teacher: string;
-	name_key: string;
+	teacher: unknown;
+	name_key: unknown;
 	lecture: unknown | null;
 	labs: unknown[];
 	discussions: unknown[];
@@ -47,6 +47,10 @@ function flexibleLikePattern(value: string) {
 	return `%${tokens.join("%")}%`;
 }
 
+function normalizeString(value: unknown) {
+	return typeof value === "string" ? value : "";
+}
+
 function isCourseRow(row: unknown): row is CourseRow {
 	if (!row || typeof row !== "object") return false;
 	const candidate = row as Partial<CourseRow>;
@@ -79,16 +83,16 @@ function normalizeSections(value: unknown): Section[] {
 
 function toCourseDocument(row: CourseRow): Course & { id: string } {
 	return {
-		id: row.id,
-		Name: row.name,
-		Term: row.term,
-		Teacher: row.teacher,
+		id: normalizeString(row.id),
+		Name: normalizeString(row.name),
+		Term: normalizeString(row.term),
+		Teacher: normalizeString(row.teacher),
 		Lecture: normalizeSection(row.lecture),
 		Labs: normalizeSections(row.labs),
 		Discussions: normalizeSections(row.discussions),
 		Midterms: normalizeSections(row.midterms),
 		Final: normalizeSection(row.final),
-		nameKey: row.name_key,
+		nameKey: normalizeString(row.name_key),
 		rmp: row.rmp,
 	};
 }

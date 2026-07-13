@@ -25,15 +25,15 @@ describe("supabaseRepository", () => {
 		mockRange.mockReset();
 	});
 
-	it("normalizes malformed nested course sections", async () => {
+	it("normalizes malformed course fields", async () => {
 		mockRange.mockResolvedValue({
 			data: [
 				{
 					id: "course-id",
 					name: "CSE 100",
 					term: "FA25",
-					teacher: "Ada Lovelace",
-					name_key: "cse 100",
+					teacher: { name: "Ada Lovelace" },
+					name_key: ["cse 100"],
 					lecture: { Days: 123, Time: "10:00", Location: null },
 					labs: [null, { Days: "M", Time: false, Location: "CENTR" }],
 					discussions: "invalid",
@@ -47,6 +47,8 @@ describe("supabaseRepository", () => {
 
 		await expect(searchCourses("", "")).resolves.toEqual([
 			expect.objectContaining({
+				Teacher: "",
+				nameKey: "",
 				Lecture: { Days: "", Time: "10:00", Location: "" },
 				Labs: [{ Days: "M", Time: "", Location: "CENTR" }],
 				Discussions: [],
