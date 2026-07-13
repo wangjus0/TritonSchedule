@@ -907,8 +907,9 @@ function extractWeekdays(schedule: string): Weekday[] {
 		.replace(/Wednesday/gi, "Wed")
 		.replace(/Thursday/gi, "Thu")
 		.replace(/Friday/gi, "Fri");
+	const dayPortion = normalized.split(/\d/, 1)[0];
 
-	const directMatches = normalized.match(/Mon|Tue|Wed|Thu|Fri/gi) ?? [];
+	const directMatches = dayPortion.match(/Mon|Tue|Wed|Thu|Fri/gi) ?? [];
 	const mapped = directMatches
 		.map((value) => toWeekday(value))
 		.filter((value): value is Weekday => Boolean(value));
@@ -917,7 +918,7 @@ function extractWeekdays(schedule: string): Weekday[] {
 		return Array.from(new Set(mapped));
 	}
 
-	const compact = normalized.replace(/[^A-Za-z]/g, "");
+	const compact = dayPortion.replace(/[^A-Za-z]/g, "");
 	const compactDays: Weekday[] = [];
 
 	for (let i = 0; i < compact.length; ) {
@@ -1130,3 +1131,14 @@ function formatSectionDetail(section: {
 }): string {
 	return `${section.time} • ${section.location}`;
 }
+
+export {
+	convertTo24Hour,
+	extractTimeRange,
+	extractWeekdays,
+	formatScheduleDisplay,
+	mapBackendCourseToCourse,
+	normalizeApiBase,
+	parseCourseSchedule,
+	shouldTryFallback,
+};
