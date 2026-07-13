@@ -1132,6 +1132,8 @@ function formatSectionDetail(section: {
 	return `${section.time} • ${section.location}`;
 }
 
+// These helpers are exported for focused regression coverage alongside the page.
+/* eslint-disable react-refresh/only-export-components */
 export {
 	convertTo24Hour,
 	extractTimeRange,
@@ -1142,3 +1144,4 @@ export {
 	parseCourseSchedule,
 	shouldTryFallback,
 };
+/* eslint-enable react-refresh/only-export-components */
