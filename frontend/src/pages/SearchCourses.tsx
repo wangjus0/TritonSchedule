@@ -109,6 +109,7 @@ export default function SearchCourses() {
     }
   });
   const [isBackendLoading, setIsBackendLoading] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [searchState, setSearchState] = useState<"idle" | "loading" | "success" | "not_found" | "error">(() => {
     const stored = sessionStorage.getItem(SEARCH_RESULTS_CACHE_KEY);
     if (!stored) return "idle";
@@ -276,7 +277,7 @@ export default function SearchCourses() {
     return () => {
       controller.abort();
     };
-  }, [debouncedSearchQuery, activeTerm, lastFetchedQuery, lastFetchedTerm]);
+  }, [debouncedSearchQuery, activeTerm, lastFetchedQuery, lastFetchedTerm, retryCount]);
 
   const displayedCourses = coursesFromBackend;
   const isDebouncingSearch =
@@ -436,7 +437,7 @@ export default function SearchCourses() {
             <div className="flex items-center gap-3 border-b border-border/70 px-4 py-4 transition-all focus-within:border-primary/70 focus-within:bg-background/20 focus-within:shadow-[inset_0_-1px_0_hsl(var(--primary)/0.55),0_0_0_2px_hsl(var(--primary)/0.16)] sm:gap-4 sm:px-6 sm:py-5">
               <Search className="h-5 w-5 text-muted-foreground sm:h-7 sm:w-7" />
               <Input
-                placeholder="Search courses by name, number, or instructor"
+                placeholder="Search courses by name or number"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-auto min-h-[2.4rem] border-0 bg-transparent p-0 text-[1.05rem] leading-[1.15] text-foreground caret-primary placeholder:text-[0.95rem] placeholder:text-muted-foreground/85 shadow-none outline-none ring-0 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 sm:min-h-[3rem] sm:text-[1.3rem] sm:placeholder:text-[1.05rem] md:text-[1.42rem] md:placeholder:text-[1.18rem]"
@@ -448,7 +449,7 @@ export default function SearchCourses() {
                 <div className="px-3 py-7 text-center sm:px-5 sm:py-8">
                   <p className="text-lg font-semibold text-foreground">Search for a course to get started</p>
                   <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                    Try a course name, number, or instructor.
+                    Try a course name or number.
                   </p>
                 </div>
               ) : isBackendLoading || isDebouncingSearch ? (
@@ -468,8 +469,18 @@ export default function SearchCourses() {
                   </div>
                   <p className="text-xl font-semibold text-foreground">Search unavailable</p>
                   <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                    Could not reach the backend server. Please make sure it is running and try again.
+                    We could not load the course catalog. Check your connection and try again.
                   </p>
+                  <button
+                    type="button"
+                    className="mt-5 rounded-lg border border-border/80 bg-background/55 px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                    onClick={() => {
+                      setLastFetchedQuery("");
+                      setRetryCount((count) => count + 1);
+                    }}
+                  >
+                    Retry search
+                  </button>
                 </div>
               ) : displayedCourses.length === 0 ? (
                 <div className="py-8 text-center sm:py-10">

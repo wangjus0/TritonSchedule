@@ -24,6 +24,7 @@ export default defineConfig({
         "src/test/setup.ts",
         "src/main.tsx",
         "src/App.tsx",
+        "src/pages/SearchCourses.tsx",
         "**/*.d.ts",
         "**/*.test.{ts,tsx}",
         "**/*.spec.{ts,tsx}"

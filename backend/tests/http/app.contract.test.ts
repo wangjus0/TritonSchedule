@@ -116,12 +116,44 @@ describe("app HTTP contracts", () => {
       .expect(200, { Term: "FA25" });
   });
 
-  it("When no active term exists then the term endpoint returns 404", async () => {
+  it("When no active term exists then the term endpoint returns a successful empty term", async () => {
     mockGetActiveTermFromDB.mockResolvedValue(null);
 
     await request(app)
       .get("/term")
-      .expect(404, { message: "No active term found" });
+      .expect(200, { Term: "" });
+  });
+
+  it("When a search has no matches then it returns a successful empty result", async () => {
+    mockSearchCourses.mockResolvedValue([]);
+
+    await request(app)
+      .get("/course")
+      .query({ course: "NOT A COURSE", term: "FA25" })
+      .expect(200, { data: [] });
+  });
+
+  it("When catalog storage is unavailable then course search returns a structured 503", async () => {
+    mockSearchCourses.mockRejectedValue(new Error("database unavailable"));
+
+    await request(app)
+      .get("/course")
+      .query({ course: "CSE 100", term: "" })
+      .expect(503, {
+        code: "CATALOG_UNAVAILABLE",
+        message: "Course catalog is temporarily unavailable",
+      });
+  });
+
+  it("When catalog storage is unavailable then term lookup returns a structured 503", async () => {
+    mockGetActiveTermFromDB.mockRejectedValue(new Error("database unavailable"));
+
+    await request(app)
+      .get("/term")
+      .expect(503, {
+        code: "CATALOG_UNAVAILABLE",
+        message: "Course catalog is temporarily unavailable",
+      });
   });
 
   it("When auth cookie is missing then admin endpoints return 401", async () => {

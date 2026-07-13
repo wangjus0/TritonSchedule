@@ -41,4 +41,14 @@ app.use("/refresh", requireApiBearer, refreshRouter);
 app.use("/term", termRouter);
 app.use("/health", requireAdmin, healthRouter);
 
+// Keep catalog failures machine-readable so the client can distinguish an
+// unavailable data source from a valid empty result.
+app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("Catalog request failed", error);
+  return res.status(503).json({
+    code: "CATALOG_UNAVAILABLE",
+    message: "Course catalog is temporarily unavailable",
+  });
+});
+
 export default app;

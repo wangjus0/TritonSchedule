@@ -46,6 +46,14 @@ function flexibleLikePattern(value: string) {
   return `%${tokens.join("%")}%`;
 }
 
+function isCourseRow(row: unknown): row is CourseRow {
+  if (!row || typeof row !== "object") return false;
+  const candidate = row as Partial<CourseRow>;
+  return typeof candidate.id === "string" &&
+    typeof candidate.name === "string" && candidate.name.trim().length > 0 &&
+    typeof candidate.term === "string" && candidate.term.trim().length > 0;
+}
+
 function toCourseDocument(row: CourseRow): Course & { id: string } {
   return {
     id: row.id,
@@ -53,9 +61,9 @@ function toCourseDocument(row: CourseRow): Course & { id: string } {
     Term: row.term,
     Teacher: row.teacher,
     Lecture: row.lecture as Course["Lecture"],
-    Labs: row.labs as Course["Labs"],
-    Discussions: row.discussions as Course["Discussions"],
-    Midterms: row.midterms as Course["Midterms"],
+    Labs: (Array.isArray(row.labs) ? row.labs : []) as Course["Labs"],
+    Discussions: (Array.isArray(row.discussions) ? row.discussions : []) as Course["Discussions"],
+    Midterms: (Array.isArray(row.midterms) ? row.midterms : []) as Course["Midterms"],
     Final: row.final as Course["Final"],
     nameKey: row.name_key,
     rmp: row.rmp,
@@ -109,7 +117,7 @@ export async function searchCourses(course: string, term: string) {
     offset += PAGE_SIZE;
   }
 
-  return rows.map(toCourseDocument);
+  return rows.filter(isCourseRow).map(toCourseDocument);
 }
 
 export async function replaceCatalog(term: string, courses: Course[], professors: RMP[]) {
