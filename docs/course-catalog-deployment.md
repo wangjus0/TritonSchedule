@@ -3,9 +3,13 @@
 Course search depends on Supabase and does not contain a bundled production catalog.
 The backend deployment must define `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` for every environment that serves `/term` or `/course`.
 The service role key is server-only and must never be exposed through a `VITE_` variable.
+Define `CRON_SECRET` on the backend as well so the scheduled or manual `/refresh` request can authenticate with `Authorization: Bearer <CRON_SECRET>`.
+The frontend deployment must define `VITE_API_BASE_URL` as the public backend base URL and `VITE_API_KEY` with the bearer value expected by that deployment, if required.
+`VITE_API_BASE_FALLBACK_URL` is optional and is used only when the primary endpoint returns an HTML response or status `404`, `502`, `503`, or `504`.
 
 Before promoting the backend, apply the committed migrations in `supabase/migrations` to the target Supabase project.
 Then invoke the authenticated `/refresh` operation to populate the catalog, or run the equivalent approved ingestion operation.
+The committed Vercel cron calls `/api/refresh`; verify that the deployment's route prefix maps that request to the backend `/refresh` route.
 A successful deployment has exactly one active row in `terms` and at least one valid row in `courses` for that term.
 
 Verify the deployment without printing credentials:

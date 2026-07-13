@@ -41,3 +41,5 @@ Start the application
 ```
 
 ### [Additonal dev environment set up (WIP)]
+
+Production course-catalog prerequisites, secret handling, migrations, population, and verification are documented in [docs/course-catalog-deployment.md](docs/course-catalog-deployment.md).
