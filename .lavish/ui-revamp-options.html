@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Triton Schedule UI Revamp Options</title>
+  <style>
+    :root { --navy:#102a43; --blue:#2f75df; --sky:#eaf4fb; --gold:#f6c344; --ink:#172b3a; --muted:#66798a; --line:#d8e4ec; --white:#fff; --green:#188568; --red:#db5a5a; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"Space Grotesk","Avenir Next","Segoe UI",sans-serif; color:var(--ink); background:#eef5f9; }
+    button { font:inherit; }
+    .review-shell { min-height:100vh; padding:28px; background:radial-gradient(circle at 10% 0,#c9e5f4 0,transparent 30%),linear-gradient(155deg,#edf7fb,#e7f0f5); }
+    .intro { max-width:1480px; margin:0 auto 20px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:24px; align-items:end; }
+    .eyebrow { margin:0 0 8px; color:#3974a8; font-size:12px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; }
+    h1 { margin:0; padding:2px 0 10px; font-size:clamp(28px,4vw,52px); line-height:1.2; letter-spacing:-.035em; color:var(--navy); }
+    .intro p:last-child { max-width:720px; margin:14px 0 0; color:var(--muted); font-size:15px; line-height:1.6; }
+    .switcher { display:flex; gap:6px; padding:5px; border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.72); box-shadow:0 10px 30px rgba(32,78,109,.12); }
+    .switcher button { border:0; padding:10px 16px; border-radius:10px; background:transparent; color:var(--muted); font-weight:700; cursor:pointer; }
+    .switcher button.active { color:white; background:var(--navy); }
+    .option { display:none; max-width:1480px; margin:auto; }
+    .option.active { display:block; }
+    .option-head { display:flex; justify-content:space-between; gap:24px; align-items:center; margin:0 0 12px; }
+    .option-head h2 { margin:0; font-size:20px; color:var(--navy); }
+    .option-head p { margin:4px 0 0; color:var(--muted); font-size:13px; }
+    .tags { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px; }
+    .tag { padding:6px 10px; border-radius:999px; background:#fff; border:1px solid var(--line); font-size:11px; font-weight:800; color:#496274; }
+    .app { min-width:0; height:780px; overflow:hidden; border:1px solid #bfcfda; border-radius:22px; background:#f8fbfd; box-shadow:0 28px 70px rgba(28,61,83,.2); }
+    .topbar { height:70px; display:flex; align-items:center; justify-content:space-between; padding:0 24px; border-bottom:1px solid var(--line); background:rgba(255,255,255,.92); }
+    .brand { display:flex; align-items:center; gap:11px; font-weight:850; color:var(--navy); }
+    .mark { width:38px; height:38px; border-radius:11px; display:grid; place-items:center; color:white; background:var(--blue); box-shadow:0 8px 18px rgba(47,117,223,.3); }
+    .mark svg { width:22px; }
+    .brand small { display:block; margin-bottom:2px; color:#8192a0; font-size:9px; letter-spacing:.15em; text-transform:uppercase; }
+    .term { padding:8px 12px; border:1px solid var(--line); border-radius:10px; background:white; font-size:12px; font-weight:750; }
+    .layout { display:grid; grid-template-columns:232px minmax(0,1fr); height:710px; }
+    .side { padding:22px 16px; border-right:1px solid var(--line); background:#f2f7fa; }
+    .nav { display:grid; gap:7px; }
+    .nav-item { display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:11px; color:#667887; font-size:13px; font-weight:700; }
+    .nav-item.active { color:#154f91; background:#deedf9; }
+    .side-card { margin-top:28px; padding:14px; border:1px solid var(--line); border-radius:14px; background:white; }
+    .side-card b { font-size:12px; }
+    .side-card p { margin:5px 0 10px; color:var(--muted); font-size:11px; line-height:1.45; }
+    .progress { height:6px; border-radius:99px; background:#e6edf2; overflow:hidden; }
+    .progress span { display:block; width:56%; height:100%; background:var(--blue); }
+    .main { min-width:0; overflow:hidden; padding:24px 26px; }
+    .hero { display:flex; justify-content:space-between; align-items:end; gap:20px; }
+    .hero h3 { margin:0; font-size:28px; letter-spacing:-.035em; color:var(--navy); }
+    .hero p { margin:5px 0 0; color:var(--muted); font-size:13px; }
+    .search { display:grid; grid-template-columns:minmax(220px,1fr) 130px 90px; gap:8px; margin:22px 0 16px; padding:8px; border:1px solid var(--line); border-radius:15px; background:white; box-shadow:0 12px 26px rgba(34,75,102,.08); }
+    .field { padding:10px 12px; border-radius:9px; background:#f5f8fa; color:#718392; font-size:12px; }
+    .primary { border:0; border-radius:9px; color:white; background:var(--blue); font-weight:800; font-size:12px; }
+    .summary { display:flex; justify-content:space-between; margin-bottom:10px; color:var(--muted); font-size:11px; }
+    .course-list { display:grid; gap:9px; }
+    .course { display:grid; grid-template-columns:56px minmax(0,1.6fr) minmax(0,1fr) 90px 42px; align-items:center; gap:12px; padding:13px; border:1px solid var(--line); border-radius:13px; background:white; }
+    .code { color:#235c9e; font-size:12px; font-weight:900; }
+    .course b { display:block; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .course small { color:var(--muted); font-size:10px; }
+    .time { color:#4d6474; font-size:11px; line-height:1.45; }
+    .rating { font-size:11px; font-weight:800; color:#795d05; }
+    .add { width:31px; height:31px; border:1px solid #b9cce0; border-radius:9px; background:#eef5fc; color:#2464ac; font-weight:900; }
+    .compare-note { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:14px; }
+    .note { padding:13px 15px; border-radius:13px; border:1px solid var(--line); background:rgba(255,255,255,.72); }
+    .note b { display:block; margin-bottom:4px; color:var(--navy); font-size:12px; }
+    .note span { color:var(--muted); font-size:11px; line-height:1.45; }
+    .option-b .app { background:#fffdf8; border-color:#d9d3c4; }
+    .option-b .topbar { background:#082f49; border-color:#183f58; color:white; }
+    .option-b .brand { color:white; }
+    .option-b .mark { background:var(--gold); color:#16334a; box-shadow:none; }
+    .option-b .term { color:white; border-color:#426276; background:#173f58; }
+    .option-b .layout { grid-template-columns:minmax(0,1fr) 390px; }
+    .option-b .main { background:#fbfaf6; }
+    .option-b .workspace { padding:22px 24px; min-width:0; overflow:hidden; }
+    .option-b .search { grid-template-columns:minmax(180px,1fr) 104px; margin:18px 0 13px; box-shadow:none; border-color:#dfdbd1; }
+    .option-b .primary { background:#0c638e; }
+    .filters { display:flex; gap:7px; margin-bottom:14px; }
+    .chip { padding:7px 10px; border-radius:9px; border:1px solid #ddd8ce; background:white; color:#68747c; font-size:10px; font-weight:700; }
+    .option-b .course { grid-template-columns:52px minmax(0,1fr) 84px 34px; border-color:#e2ded4; padding:11px; border-radius:10px; }
+    .option-b .course.selected { border-color:#2d83a8; box-shadow:inset 3px 0 #2d83a8; background:#f6fcff; }
+    .schedule-panel { min-width:0; padding:18px; border-left:1px solid #ddd8ce; background:#f3f0e8; }
+    .schedule-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:13px; }
+    .schedule-head b { color:#15374b; font-size:14px; }
+    .schedule-head span { color:#71808a; font-size:10px; }
+    .days { display:grid; grid-template-columns:38px repeat(5,minmax(0,1fr)); border:1px solid #d8d2c6; border-radius:12px 12px 0 0; overflow:hidden; background:white; }
+    .days div { padding:8px 2px; border-right:1px solid #e5e0d6; text-align:center; font-size:9px; font-weight:800; color:#61727d; }
+    .calendar { position:relative; height:510px; border:1px solid #d8d2c6; border-top:0; border-radius:0 0 12px 12px; background:repeating-linear-gradient(to bottom,#fff 0,#fff 63px,#e9e5dc 64px); overflow:hidden; }
+    .hours { position:absolute; inset:0 auto 0 0; width:38px; border-right:1px solid #e2ddd2; color:#89949a; font-size:8px; }
+    .hours span { display:block; height:64px; padding:4px; }
+    .event { position:absolute; width:58px; padding:7px 5px; border-radius:7px; color:white; font-size:8px; line-height:1.3; box-shadow:0 4px 10px rgba(0,0,0,.12); }
+    .e1 { left:49px; top:38px; height:75px; background:#3478c6; }.e2 { left:185px; top:38px; height:75px; background:#3478c6; }.e3 { left:117px; top:174px; height:70px; background:#ae5f8b; }.e4 { left:253px; top:174px; height:70px; background:#ae5f8b; }.e5 { left:49px; top:290px; height:62px; background:#27836b; }
+    .feedback { max-width:1480px; margin:18px auto 0; padding:15px 17px; display:flex; justify-content:space-between; gap:18px; align-items:center; border:1px dashed #9cb4c5; border-radius:14px; background:rgba(255,255,255,.55); color:#566d7c; font-size:12px; }
+    .feedback strong { color:var(--navy); }
+    @media (max-width:900px) { .review-shell{padding:14px}.intro{grid-template-columns:1fr}.switcher{width:100%}.switcher button{flex:1}.app{height:auto;min-height:720px}.layout,.option-b .layout{grid-template-columns:1fr}.side,.schedule-panel{display:none}.compare-note{grid-template-columns:1fr}.course{grid-template-columns:48px minmax(0,1fr) 36px}.course .time,.course .rating{display:none}.option-head{align-items:flex-start;flex-direction:column}.tags{justify-content:flex-start}.feedback{align-items:flex-start;flex-direction:column} }
+  </style>
+</head>
+<body>
+  <div class="review-shell">
+    <section class="intro">
+      <div>
+        <p class="eyebrow">Triton Schedule - UI direction study</p>
+        <h1>Two ways to make planning feel faster.</h1>
+        <p>Both options keep the current blue Triton identity and existing feature scope. The difference is the workflow: one emphasizes calm, guided course discovery, while the other turns search and schedule building into one continuous workspace.</p>
+      </div>
+      <div class="switcher" role="tablist" aria-label="UI options">
+        <button class="active" data-target="option-a">Option A</button>
+        <button data-target="option-b">Option B</button>
+      </div>
+    </section>
+
+    <section id="option-a" class="option option-a active">
+      <div class="option-head">
+        <div><h2>A. Focused Navigator</h2><p>A cleaner evolution of the current product with stronger hierarchy and lighter visual noise.</p></div>
+        <div class="tags"><span class="tag">Low migration risk</span><span class="tag">Best for discovery</span><span class="tag">Mobile friendly</span></div>
+      </div>
+      <div class="app">
+        <header class="topbar"><div class="brand"><div class="mark">Ψ</div><div><small>UC San Diego</small>Triton Schedule</div></div><div class="term">Spring 2026⌄</div></header>
+        <div class="layout">
+          <aside class="side"><div class="nav"><div class="nav-item active">⌕&nbsp;&nbsp; Find courses</div><div class="nav-item">▦&nbsp;&nbsp; My schedule</div><div class="nav-item">♡&nbsp;&nbsp; Saved courses</div></div><div class="side-card"><b>Schedule progress</b><p>3 courses added · 12 units</p><div class="progress"><span></span></div></div></aside>
+          <main class="main"><div class="hero"><div><h3>Find your next course</h3><p>Search by course code, title, or professor.</p></div><span class="tag">24 results</span></div>
+            <div class="search"><div class="field">⌕&nbsp; CSE 100</div><div class="field">All departments⌄</div><button class="primary">Search</button></div>
+            <div class="summary"><span>Showing sections for Spring 2026</span><span>Sort: Best match⌄</span></div>
+            <div class="course-list">
+              <div class="course"><span class="code">CSE 100</span><div><b>Advanced Data Structures</b><small>Niema Moshiri · Center Hall 216</small></div><div class="time">MWF · 10:00-10:50 AM<br><small>Discussion options available</small></div><span class="rating">★ 4.8</span><button class="add">+</button></div>
+              <div class="course"><span class="code">CSE 101</span><div><b>Design and Analysis of Algorithms</b><small>Russell Impagliazzo · Peterson 103</small></div><div class="time">TuTh · 12:30-1:50 PM<br><small>38 seats available</small></div><span class="rating">★ 4.3</span><button class="add">+</button></div>
+              <div class="course"><span class="code">CSE 110</span><div><b>Software Engineering</b><small>Michael Coblenz · Warren Lecture Hall</small></div><div class="time">MWF · 2:00-2:50 PM<br><small>Lab required</small></div><span class="rating">★ 4.6</span><button class="add">+</button></div>
+              <div class="course"><span class="code">CSE 120</span><div><b>Principles of Computer Operating Systems</b><small>Geoffrey Voelker · Center Hall 115</small></div><div class="time">TuTh · 3:30-4:50 PM<br><small>Waitlist likely</small></div><span class="rating">★ 4.5</span><button class="add">+</button></div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <div class="compare-note"><div class="note"><b>Core change</b><span>Persistent left navigation, compact search controls, and scannable course cards replace the current header-plus-accordion rhythm.</span></div><div class="note"><b>Why it helps</b><span>Course code, title, meeting time, seat signal, and rating are visible without expanding every result.</span></div><div class="note"><b>Tradeoff</b><span>The schedule remains a separate destination, so users still switch context while building.</span></div></div>
+    </section>
+
+    <section id="option-b" class="option option-b">
+      <div class="option-head">
+        <div><h2>B. Planning Studio</h2><p>A more ambitious split workspace that previews schedule impact before a course is added.</p></div>
+        <div class="tags"><span class="tag">High workflow impact</span><span class="tag">Best for comparison</span><span class="tag">Desktop first</span></div>
+      </div>
+      <div class="app">
+        <header class="topbar"><div class="brand"><div class="mark">Ψ</div><div><small>UC San Diego</small>Triton Schedule</div></div><div class="term">Spring 2026 · 12 units</div></header>
+        <div class="layout">
+          <main class="workspace"><div class="hero"><div><h3>Build your schedule</h3><p>Compare sections and see conflicts instantly.</p></div></div>
+            <div class="search"><div class="field">⌕&nbsp; Search courses or professors</div><button class="primary">Find</button></div>
+            <div class="filters"><span class="chip">CSE ×</span><span class="chip">No conflicts</span><span class="chip">Open seats</span><span class="chip">+ Add filter</span></div>
+            <div class="course-list">
+              <div class="course selected"><span class="code">CSE 100</span><div><b>Advanced Data Structures</b><small>Niema Moshiri · MWF 10:00 AM</small></div><span class="rating">★ 4.8</span><button class="add">✓</button></div>
+              <div class="course"><span class="code">CSE 101</span><div><b>Design and Analysis of Algorithms</b><small>Russell Impagliazzo · TuTh 12:30 PM</small></div><span class="rating">★ 4.3</span><button class="add">+</button></div>
+              <div class="course selected"><span class="code">CSE 110</span><div><b>Software Engineering</b><small>Michael Coblenz · MWF 2:00 PM</small></div><span class="rating">★ 4.6</span><button class="add">✓</button></div>
+              <div class="course"><span class="code">CSE 120</span><div><b>Operating Systems</b><small>Geoffrey Voelker · TuTh 3:30 PM</small></div><span class="rating">★ 4.5</span><button class="add">+</button></div>
+            </div>
+          </main>
+          <aside class="schedule-panel"><div class="schedule-head"><b>Live week preview</b><span>3 courses · 12 units</span></div><div class="days"><div></div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div></div><div class="calendar"><div class="hours"><span>8 AM</span><span>9 AM</span><span>10 AM</span><span>11 AM</span><span>12 PM</span><span>1 PM</span><span>2 PM</span><span>3 PM</span></div><div class="event e1"><b>CSE 100</b><br>10:00</div><div class="event e2"><b>CSE 100</b><br>10:00</div><div class="event e3"><b>MATH 109</b><br>12:30</div><div class="event e4"><b>MATH 109</b><br>12:30</div><div class="event e5"><b>CSE 110</b><br>2:00</div></div></aside>
+        </div>
+      </div>
+      <div class="compare-note"><div class="note"><b>Core change</b><span>Search results and a live weekly preview share the same canvas, with selected courses reflected immediately.</span></div><div class="note"><b>Why it helps</b><span>Users can judge gaps, overload, and time conflicts while browsing instead of after committing.</span></div><div class="note"><b>Tradeoff</b><span>The denser desktop layout needs a purpose-built mobile flow, likely a results and preview toggle.</span></div></div>
+    </section>
+
+    <div class="feedback"><span><strong>What to review:</strong> Pick the workflow that feels right, then annotate any element you would keep, remove, or combine.</span><span>Suggested response: “A”, “B”, or “A’s structure with B’s live preview.”</span></div>
+  </div>
+  <script>
+    document.querySelectorAll('.switcher button').forEach(button => button.addEventListener('click', () => {
+      document.querySelectorAll('.switcher button,.option').forEach(el => el.classList.remove('active'));
+      button.classList.add('active');
+      document.getElementById(button.dataset.target).classList.add('active');
+    }));
+  </script>
+</body>
+</html>

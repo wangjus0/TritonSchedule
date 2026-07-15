@@ -11,7 +11,7 @@ const API_KEY =
     .map((value) => (typeof value === "string" ? value.trim() : ""))
     .find((value) => value.length > 0) ?? "";
 
-// Throw a clear error during initialization if the API key is not configured in production
+// Log the missing production configuration during initialization.
 if (!import.meta.env.DEV && !API_KEY) {
   console.error("VITE_API_KEY is not set. Set VITE_API_KEY in your environment variables.");
 }
@@ -76,7 +76,7 @@ function shouldTryFallback(response: Response): boolean {
 
 function createApiRequestInit(signal: AbortSignal): RequestInit {
   if (!API_KEY) {
-    // In production without an API key, the request will fail with a clear user-facing error
+    // Without a key, send no authorization header and let the API reject the request.
     return { signal };
   }
 
