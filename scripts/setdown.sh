@@ -10,7 +10,7 @@ usage() {
   cat <<'USAGE'
 Usage: npm run setdown -- [options]
 
-Stops the local Supabase stack for this workspace. MongoDB is not used.
+Stops the optional local Supabase stack for this workspace. MongoDB is not affected.
 
 Options:
   --wipe       Also delete local Supabase data volumes after stopping
