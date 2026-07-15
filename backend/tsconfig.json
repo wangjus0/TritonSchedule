@@ -1,18 +1,16 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
-    "target": "esnext",
+    "target": "ES2022",
     "types": [
       "node",
       "jest"
     ],
     "module": "nodenext",
-    "rootDir": ".",
-    "outDir": "dist",
     "lib": [
-      "ESNext",
+      "ES2022",
       "DOM"
     ],
+    "noEmit": true,
     "strict": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
@@ -21,6 +19,6 @@
   },
   "include": [
     "src/**/*.ts",
-    "api/**/*.ts"
+    "tests/**/*.ts"
   ]
 }

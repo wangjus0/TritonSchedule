@@ -5,9 +5,9 @@
     "setup": "bash scripts/setup.sh",
     "setdown": "bash scripts/setdown.sh",
     "teardown": "npm run setdown",
-    "dev": "concurrently -n client,server -c blue,grey \"npm --prefix frontend run dev\" \"npm --prefix backend run build && npm --prefix backend run start:server\"",
+    "dev": "concurrently -n client,server -c blue,grey \"npm --prefix frontend run dev\" \"npm --prefix backend run dev\"",
     "dev:frontend": "npm --prefix frontend run dev",
-    "dev:backend": "npm --prefix backend run build && npm --prefix backend run start:server"
+    "dev:backend": "npm --prefix backend run dev"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

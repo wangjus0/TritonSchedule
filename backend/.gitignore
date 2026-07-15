@@ -3,13 +3,19 @@
 
 # Dependencies
 node_modules
-yarn.lock
 
 # Build output
 dist
 
 # Coverage reports
 coverage
+
+# TypeScript incremental build state
+*.tsbuildinfo
+
+# Local logs and operating-system files
+*.log
+.DS_Store
 
 # Config
 .vercel
