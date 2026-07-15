@@ -18,9 +18,11 @@ backend/
 │   └── server.ts           # Local and standalone server entry point
 ├── tests/                  # Automated tests and test setup
 ├── dist/                   # Generated production JavaScript
+├── .env.example            # Local environment template
 ├── jest.config.cjs         # Test runner configuration
 ├── tsconfig.json           # Editor and full-project type checking
-└── tsconfig.build.json     # Production-only compiler configuration
+├── tsconfig.build.json     # Production-only compiler configuration
+└── vercel.json             # Vercel build and cron configuration
 ```
 
 `dist/` is generated and must not be committed.
@@ -38,6 +40,8 @@ npm run dev
 ```
 
 The repository-level `npm run dev` starts both the frontend and this backend in watch mode.
+Use the repository-level `npm run setup` first to create environment files, align the frontend and backend API keys, and install all workspace dependencies.
+The root [`README.md`](../README.md#environment-variables) documents every environment variable and the optional local Supabase setup.
 
 ## Verification
 
@@ -52,6 +56,7 @@ npm start
 The first three commands validate source and test code.
 The build command clears stale output and compiles production code only.
 The start command runs the compiled server from `dist/server.js`.
+Use `npm run test:watch` for interactive test development and `npm run clean` to remove generated build output.
 
 ## Deployment
 
