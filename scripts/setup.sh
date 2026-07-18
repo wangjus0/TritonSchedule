@@ -157,6 +157,18 @@ set_env_key() {
   fi
 }
 
+comment_env_key() {
+  local file="$1"
+  local key="$2"
+
+  local tmp
+  tmp="$(mktemp "${file}.tmp.XXXXXX")"
+  ENV_KEY="$key" perl -0pe '
+    s/^[ \t]*\Q$ENV{ENV_KEY}\E[ \t]*=.*/"# disabled by setup: " . $&/mge
+  ' "$file" > "$tmp"
+  mv "$tmp" "$file"
+}
+
 ensure_backend_secret() {
   local key="$1"
   local value
@@ -209,6 +221,31 @@ ensure_api_keys() {
   log "Set matching API keys in backend/.env and frontend/.env for local development."
 }
 
+ensure_no_mongo_env() {
+  local prohibited=(MONGO_URI DB_NAME)
+  local found=()
+
+  for key in "${prohibited[@]}"; do
+    if has_env_key "$key" "$BACKEND_ENV"; then
+      found+=("$key")
+    fi
+  done
+
+  if (( ${#found[@]} <= 0 )); then
+    return
+  fi
+
+  if (( CHECK_ONLY )); then
+    fail "Remove MongoDB env vars from backend/.env: ${found[*]}. This workspace uses Supabase."
+  fi
+
+  for key in "${found[@]}"; do
+    comment_env_key "$BACKEND_ENV" "$key"
+  done
+
+  warn "Commented out old MongoDB env vars in backend/.env: ${found[*]}"
+}
+
 status_env_value() {
   local key="$1"
   local status="$2"
@@ -239,6 +276,18 @@ sync_local_supabase_env() {
   fi
 
   log "Synced backend/.env from local Supabase status."
+}
+
+has_required_supabase_env() {
+  local required=(SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY)
+
+  for key in "${required[@]}"; do
+    if is_placeholder "$(env_value "$key" "$BACKEND_ENV")"; then
+      return 1
+    fi
+  done
+
+  return 0
 }
 
 is_local_supabase_url() {
@@ -279,7 +328,7 @@ start_local_supabase() {
 }
 
 validate_backend_env() {
-  local required=(MONGO_URI DB_NAME API_KEY JWT_SECRET)
+  local required=(SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY API_KEY JWT_SECRET)
   local missing=()
 
   for key in "${required[@]}"; do
@@ -292,7 +341,7 @@ validate_backend_env() {
     fail "Missing or placeholder required backend env values in backend/.env: ${missing[*]}"
   fi
 
-  local recommended=(SUPABASE_URL SUPABASE_PUBLISHABLE_KEY SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY DATABASE_URL DB_PASSWORD)
+  local recommended=(SUPABASE_PUBLISHABLE_KEY SUPABASE_ANON_KEY DATABASE_URL DB_PASSWORD)
   local missing_recommended=()
 
   for key in "${recommended[@]}"; do
@@ -305,7 +354,7 @@ validate_backend_env() {
     warn "Missing or placeholder recommended backend env values in backend/.env: ${missing_recommended[*]}"
   fi
 
-  log "Validated backend/.env for local development."
+  log "Validated backend/.env for Supabase local development."
 }
 
 validate_frontend_env() {
@@ -341,6 +390,11 @@ install_deps_for() {
     return
   fi
 
+  if [[ -d "$dir/node_modules" ]]; then
+    log "$label dependencies already installed; skipping."
+    return
+  fi
+
   log "Installing $label dependencies"
   if [[ -f "$dir/package-lock.json" ]]; then
     npm --prefix "$dir" --cache "$NPM_CACHE_DIR" ci
@@ -353,6 +407,12 @@ ensure_env_from_example "$BACKEND_ENV" "$ROOT_DIR/backend/.env.example" "backend
 ensure_env_from_example "$FRONTEND_ENV" "$ROOT_DIR/frontend/.env.example" "frontend"
 ensure_api_keys
 ensure_backend_secret JWT_SECRET
+ensure_no_mongo_env
+
+if ! has_required_supabase_env && (( ! CHECK_ONLY )) && [[ "$SUPABASE_MODE" != "skip" ]]; then
+  start_local_supabase
+  sync_local_supabase_env
+fi
 
 validate_backend_env
 validate_frontend_env
