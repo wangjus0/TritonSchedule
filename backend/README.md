@@ -45,7 +45,8 @@ The root [`README.md`](../README.md#environment-variables) documents every envir
 
 ## Course search and TSS metadata
 
-`GET /course?course=<query>&term=<term>` returns one course record for each matching primary section.
+`GET /course?course=<query>&term=<term>` responds with `{ data: Course[] }` and returns one course record for each matching primary section.
+Primary sections include lecture, independent study, and seminar instruction types, including the Class Planner codes `LE`, `IN`, and `SE`.
 Lecture, discussion, and lab entries retain the display fields `Days`, `Time`, and `Location` and may include the following Class Planner identifiers:
 
 | Field | Meaning |

@@ -3,8 +3,11 @@ export interface DiscussionSection {
   name: string;
   time: string;
   location: string;
+  /** Term-qualified Class Planner section reference. */
   sectionRef?: string;
+  /** Class Planner display code for the section. */
   sectionCode?: string;
+  /** TSS event packages that contain this section. */
   eventPackageIds?: string[];
 }
 
@@ -24,10 +27,14 @@ export interface Course {
   color: string;
   lectureLocation?: string;
   lectureMeetings?: DiscussionSection[];
+  /** Term-qualified Class Planner reference for the primary section. */
   lectureSectionRef?: string;
+  /** TSS event packages that contain the primary section. */
   lectureEventPackageIds?: string[];
   sectionCode?: string;
+  /** Official TSS booking URLs keyed by event package ID. */
   tssPackageUrls?: Record<string, string>;
+  /** Official module-level TSS route when no package deep link exists. */
   tssFallbackUrl?: string;
   rmpRating?: number;
   rmpTakeAgain?: number;

@@ -41,6 +41,7 @@ const PRIMARY_INSTRUCTION_TYPES = new Set([
   "seminar",
 ]);
 
+/** Returns whether Class Planner identifies a section as primary instruction. */
 export function isPrimaryInstructionType(value: string): boolean {
   return PRIMARY_INSTRUCTION_TYPES.has(value.trim().toLowerCase());
 }
