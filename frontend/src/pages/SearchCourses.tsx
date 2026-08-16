@@ -21,6 +21,7 @@ import { CalendarEvent, Weekday } from "@/types/calendar";
 import { cn } from "@/lib/utils";
 import { getProfessorProfileUrl, normalizeProfessorProfileUrl } from "@/lib/professorProfile";
 import { findConflictingEvents, hasScheduleConflict } from "@/lib/scheduleConflicts";
+import { resolveTssBookingUrl } from "@/lib/tssBooking";
 import { toast } from "sonner";
 
 const API_KEY =
@@ -106,7 +107,7 @@ function createApiRequestInit(signal: AbortSignal): RequestInit {
 }
 
 export default function SearchCourses() {
-  const SEARCH_RESULTS_CACHE_KEY = "searchCourseResultsCache";
+  const SEARCH_RESULTS_CACHE_KEY = "searchCourseResultsCache:v2";
   const [searchQuery, setSearchQuery] = useState(() =>
     sessionStorage.getItem("searchCoursesQuery") ?? ""
   );
@@ -349,6 +350,13 @@ export default function SearchCourses() {
   const selectedLab = useMemo(
     () => resolveSelectedSection(selectedCourse?.id, selectedLabIds, availableLabSections),
     [selectedCourse, selectedLabIds, availableLabSections]
+  );
+
+  const selectedTssUrl = useMemo(
+    () => selectedCourse
+      ? resolveTssBookingUrl(selectedCourse, selectedDiscussion, selectedLab)
+      : undefined,
+    [selectedCourse, selectedDiscussion, selectedLab]
   );
 
   const candidateLabEvents = useMemo(
@@ -673,28 +681,50 @@ export default function SearchCourses() {
               </div>
 
               <div className="-mx-5 shrink-0 border-t border-border bg-[#fcfdff] px-5 pb-6 pt-4 sm:-mx-7 sm:px-7 lg:-mx-8 lg:px-8 xl:mx-0 xl:px-0 xl:pb-0">
-                <button
-                  type="button"
-                  disabled={
-                    addedCourseIds.has(selectedCourse.id) ||
-                    conflictingScheduledEvents.length > 0 ||
-                    candidateScheduleEvents.length === 0
-                  }
-                  onClick={() =>
-                    handleAddToCalendar(
-                      selectedCourse,
-                      selectedDiscussion,
-                      selectedLab
-                    )
-                  }
-                  className="h-12 w-full rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
-                >
-                  {addedCourseIds.has(selectedCourse.id)
-                    ? "Added to schedule"
-                    : conflictingScheduledEvents.length > 0
-                      ? "Resolve schedule conflict"
-                      : "Add section"}
-                </button>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {selectedTssUrl ? (
+                    <a
+                      href={selectedTssUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border bg-white px-5 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Open in TSS
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border bg-muted px-5 text-sm font-semibold text-muted-foreground"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      TSS link unavailable
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={
+                      addedCourseIds.has(selectedCourse.id) ||
+                      conflictingScheduledEvents.length > 0 ||
+                      candidateScheduleEvents.length === 0
+                    }
+                    onClick={() =>
+                      handleAddToCalendar(
+                        selectedCourse,
+                        selectedDiscussion,
+                        selectedLab
+                      )
+                    }
+                    className="h-12 w-full rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+                  >
+                    {addedCourseIds.has(selectedCourse.id)
+                      ? "Added to schedule"
+                      : conflictingScheduledEvents.length > 0
+                        ? "Resolve schedule conflict"
+                        : "Add section"}
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
@@ -1366,6 +1396,10 @@ type BackendSection = {
   Days?: string;
   Time?: string;
   Location?: string;
+  SectionId?: string;
+  SectionRef?: string;
+  SectionCode?: string;
+  EventPackageIds?: string[];
 };
 
 type BackendCourse = {
@@ -1391,6 +1425,8 @@ type BackendCourse = {
   midterms?: BackendSection[];
   Final?: BackendSection | null;
   final?: BackendSection | null;
+  TssPackageUrls?: Record<string, string>;
+  TssFallbackUrl?: string;
 };
 
 type BackendResponse = BackendCourse[] | { data?: BackendCourse[] };
@@ -1440,8 +1476,15 @@ function mapBackendCourseToCourse(course: BackendCourse, index: number): Course 
       name: `Lecture meeting ${meetingIndex + 1}`,
       time: `${meeting.Days ?? ""} ${meeting.Time ?? ""}`.trim() || "TBA",
       location: meeting.Location?.trim() || "TBA",
+      sectionRef: meeting.SectionRef,
+      sectionCode: meeting.SectionCode,
+      eventPackageIds: meeting.EventPackageIds,
     })),
+    lectureSectionRef: lecture?.SectionRef,
+    lectureEventPackageIds: lecture?.EventPackageIds,
     sectionCode: course.SectionCode,
+    tssPackageUrls: course.TssPackageUrls,
+    tssFallbackUrl: course.TssFallbackUrl,
     rmpRating:
       Number.isFinite(avgRating) && avgRating > 0
         ? avgRating
@@ -1453,15 +1496,21 @@ function mapBackendCourseToCourse(course: BackendCourse, index: number): Course 
     rmpProfileUrl: normalizeProfessorProfileUrl(rmp?.profileUrl),
     discussionSections: discussions.map((section, sectionIndex) => ({
       id: `${index}-${sectionIndex}`,
-      name: `Discussion ${sectionIndex + 1}`,
+      name: section.SectionCode ?? `Discussion ${sectionIndex + 1}`,
       time: `${section.Days ?? ""} ${section.Time ?? ""}`.trim() || "TBA",
       location: section.Location?.trim() || "TBA",
+      sectionRef: section.SectionRef,
+      sectionCode: section.SectionCode,
+      eventPackageIds: section.EventPackageIds,
     })),
     labSections: labs.map((section, sectionIndex) => ({
       id: `${index}-lab-${sectionIndex}`,
-      name: `Lab ${sectionIndex + 1}`,
+      name: section.SectionCode ?? `Lab ${sectionIndex + 1}`,
       time: `${section.Days ?? ""} ${section.Time ?? ""}`.trim() || "TBA",
       location: section.Location?.trim() || "TBA",
+      sectionRef: section.SectionRef,
+      sectionCode: section.SectionCode,
+      eventPackageIds: section.EventPackageIds,
     })),
     midtermSections: midterms
       .filter((midterm) => {

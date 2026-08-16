@@ -12,6 +12,7 @@ import type { Term } from "../models/Term.js";
 import {
   buildLegacyCourses,
   buildLegacySections,
+  isPrimaryInstructionType,
 } from "../ingestion/buildClassPlannerCatalog.js";
 import { SUBJECT_CODES } from "../ingestion/subjectCodes.js";
 import { normalizeTeacherKey } from "../utils/normalizeTeacherKey.js";
@@ -21,9 +22,20 @@ type MeetingRow = ClassPlannerMeeting & {
   meeting_ordinal: number;
 };
 
+type TssPackageRow = {
+  event_package_id: string;
+  tss_booking_url: string | null;
+};
+
+type TssModuleRouteRow = {
+  route_kind: "event_package" | "module";
+  tss_url: string;
+};
+
 type SectionRow = Omit<ClassPlannerSection, "event_package_ids" | "meetings"> & {
   id: number;
   class_planner_section_meetings: MeetingRow[];
+  tss_event_packages?: TssPackageRow[];
 };
 
 type OfferingRow = Omit<ClassPlannerCourse, "sections"> & {
@@ -31,6 +43,7 @@ type OfferingRow = Omit<ClassPlannerCourse, "sections"> & {
   source_key: string;
   instructors_search: string;
   class_planner_sections: SectionRow[];
+  tss_module_routes?: TssModuleRouteRow | TssModuleRouteRow[] | null;
 };
 
 type ProfessorRow = {
@@ -99,12 +112,6 @@ export function exactSubjectCodeFromSearch(value: string): string | null {
   return NORMALIZED_SUBJECT_CODES.has(normalizedValue) ? normalizedValue : null;
 }
 
-const PRIMARY_INSTRUCTION_TYPES = new Set([
-  "independent study",
-  "lecture",
-  "seminar",
-]);
-
 export function mapOfferingToCourses(
   row: OfferingRow,
   ratingsByNameKey: ReadonlyMap<string, RMP> = new Map(),
@@ -114,7 +121,8 @@ export function mapOfferingToCourses(
     sections: row.class_planner_sections
       .map((section): ClassPlannerSection => ({
         ...section,
-        event_package_ids: [],
+        event_package_ids: (section.tss_event_packages ?? [])
+          .map(({ event_package_id }) => event_package_id),
         meetings: section.class_planner_section_meetings
           .slice()
           .sort((left, right) => left.meeting_ordinal - right.meeting_ordinal),
@@ -123,10 +131,25 @@ export function mapOfferingToCourses(
   };
   const baseCourse = buildLegacyCourses(row.term_code, [classPlannerCourse])[0]!;
   const primarySections = classPlannerCourse.sections.filter((section) =>
-    PRIMARY_INSTRUCTION_TYPES.has(section.instruction_type_name.toLowerCase()),
+    isPrimaryInstructionType(section.instruction_type_name),
   );
   const sectionChoices: Array<ClassPlannerSection | undefined> =
     primarySections.length > 0 ? primarySections : [undefined];
+  const tssPackageUrls = Object.fromEntries(
+    row.class_planner_sections.flatMap((section) =>
+      (section.tss_event_packages ?? []).flatMap((eventPackage) =>
+        eventPackage.tss_booking_url
+          ? [[eventPackage.event_package_id, eventPackage.tss_booking_url] as const]
+          : [],
+      ),
+    ),
+  );
+  const route = Array.isArray(row.tss_module_routes)
+    ? row.tss_module_routes[0]
+    : row.tss_module_routes;
+  const tssFallbackUrl = route?.route_kind === "module"
+    ? route.tss_url
+    : undefined;
 
   return sectionChoices.map((primarySection) => {
     const lectures = primarySection
@@ -134,6 +157,15 @@ export function mapOfferingToCourses(
       : [];
     const teacher = primarySection?.instructors[0] ?? row.instructors[0] ?? "";
     const nameKey = normalizeTeacherKey(teacher);
+    const relevantTssPackageUrls = primarySection
+      ? Object.fromEntries(
+          primarySection.event_package_ids.flatMap((packageId) =>
+            tssPackageUrls[packageId]
+              ? [[packageId, tssPackageUrls[packageId]] as const]
+              : [],
+          ),
+        )
+      : tssPackageUrls;
 
     return {
       ...baseCourse,
@@ -144,6 +176,8 @@ export function mapOfferingToCourses(
       SectionCode: primarySection?.section_code ?? row.module_code,
       nameKey,
       rmp: ratingsByNameKey.get(nameKey) ?? null,
+      TssPackageUrls: relevantTssPackageUrls,
+      TssFallbackUrl: tssFallbackUrl,
     };
   });
 }
@@ -214,6 +248,10 @@ export async function searchCourses(course: string, term: string) {
           waitlist_available,
           status,
           instructors,
+          tss_event_packages (
+            event_package_id,
+            tss_booking_url
+          ),
           class_planner_section_meetings (
             meeting_ordinal,
             meeting_kind,
@@ -231,6 +269,10 @@ export async function searchCourses(course: string, term: string) {
             is_remote,
             is_tba
           )
+        ),
+        tss_module_routes (
+          route_kind,
+          tss_url
         )
       `)
       .order("module_code", { ascending: true })

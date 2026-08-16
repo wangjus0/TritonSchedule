@@ -50,6 +50,10 @@ describe("mapOfferingToCourse", () => {
       prerequisites: [],
       restrictions: [],
       metadata_source: "UC San Diego course catalog",
+      tss_module_routes: {
+        route_kind: "event_package",
+        tss_url: "https://tss.ucsd.edu/fiori#representative",
+      },
       class_planner_sections: [
         {
           id: 9001,
@@ -65,6 +69,16 @@ describe("mapOfferingToCourse", () => {
           waitlist_available: null,
           status: "AC",
           instructors: ["Ada Lovelace"],
+          tss_event_packages: [
+            {
+              event_package_id: "156420",
+              tss_booking_url: "https://tss.ucsd.edu/fiori#package-156420",
+            },
+            {
+              event_package_id: "156421",
+              tss_booking_url: "https://tss.ucsd.edu/fiori#package-156421",
+            },
+          ],
           class_planner_section_meetings: [
             classMeeting,
             {
@@ -83,8 +97,8 @@ describe("mapOfferingToCourse", () => {
           id: 9003,
           section_id: "E 00000003",
           section_ref: "FA26:E 00000003",
-          section_code: "002-000-LE",
-          instruction_type_name: "lecture",
+          section_code: "002-000-SE",
+          instruction_type_name: "se",
           capacity: 100,
           enrolled: 80,
           seats_available: 20,
@@ -93,6 +107,12 @@ describe("mapOfferingToCourse", () => {
           waitlist_available: null,
           status: "AC",
           instructors: ["Grace Hopper"],
+          tss_event_packages: [
+            {
+              event_package_id: "156500",
+              tss_booking_url: "https://tss.ucsd.edu/fiori#package-156500",
+            },
+          ],
           class_planner_section_meetings: [
             { ...classMeeting, day_code: "M", day_name: "Monday" },
           ],
@@ -111,6 +131,12 @@ describe("mapOfferingToCourse", () => {
           waitlist_available: null,
           status: "AC",
           instructors: [],
+          tss_event_packages: [
+            {
+              event_package_id: "156420",
+              tss_booking_url: "https://tss.ucsd.edu/fiori#package-156420",
+            },
+          ],
           class_planner_section_meetings: [
             { ...classMeeting, day_code: "R", day_name: "Thursday" },
           ],
@@ -141,19 +167,79 @@ describe("mapOfferingToCourse", () => {
         Days: "Tue",
         Time: "5:00pm-6:20pm",
         Location: "CENTR 101",
+        SectionRef: "FA26:E 00000001",
+        EventPackageIds: ["156420", "156421"],
       },
       Lectures: [
         { Days: "Tue" },
         { Days: "Wed", Time: "7:00pm-8:00pm" },
       ],
-      Discussions: [{ Days: "Thu" }],
+      Discussions: [{
+        Days: "Thu",
+        SectionRef: "FA26:E 00000002",
+        EventPackageIds: ["156420"],
+      }],
+      TssPackageUrls: {
+        "156420": "https://tss.ucsd.edu/fiori#package-156420",
+        "156421": "https://tss.ucsd.edu/fiori#package-156421",
+      },
       rmp: rating,
     });
     expect(result[1]).toMatchObject({
       id: "FA26:E 00000003",
       Teacher: "Grace Hopper",
-      SectionCode: "002-000-LE",
+      SectionCode: "002-000-SE",
+      Lecture: {
+        SectionRef: "FA26:E 00000003",
+        EventPackageIds: ["156500"],
+      },
+      TssPackageUrls: {
+        "156500": "https://tss.ucsd.edu/fiori#package-156500",
+      },
     });
+  });
+
+  it("returns the module route only when no event-package deep link exists", () => {
+    const offering = {
+      id: 402,
+      source_key: "CSE-290:E 00000290",
+      instructors_search: "",
+      term_code: "FA26",
+      subject_code: "CSE",
+      course_code: "290",
+      module_code: "CSE-290",
+      module_name: "Independent Study",
+      course_title: null,
+      section_count: 1,
+      open_section_count: 1,
+      open_seat_count: 1,
+      waitlist_available_count: 0,
+      instruction_types: ["independent study"],
+      instructors: [],
+      availability_refresh_pending: false,
+      is_topic_course: false,
+      section_family: null,
+      subject_name: "Computer Science and Engineering",
+      academic_level: "UD",
+      matching_section_count: 1,
+      units_display: "4 units",
+      prerequisites: [],
+      restrictions: [],
+      metadata_source: "UC San Diego course catalog",
+      tss_module_routes: {
+        route_kind: "module",
+        tss_url: "https://tss.ucsd.edu/fiori#module-290",
+      },
+      class_planner_sections: [],
+    };
+
+    const [result] = mapOfferingToCourses(
+      offering as Parameters<typeof mapOfferingToCourses>[0],
+    );
+
+    expect(result?.TssFallbackUrl).toBe(
+      "https://tss.ucsd.edu/fiori#module-290",
+    );
   });
 });
 

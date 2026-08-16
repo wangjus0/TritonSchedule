@@ -10,7 +10,9 @@
 
 ## Features
 
-- WIP
+- Search the active UCSD Class Planner catalog by course, title, or instructor and compare lecture, discussion, and lab choices against the current schedule.
+- Open the selected section combination in TSS when Class Planner supplies an official route that TritonSchedule can validate.
+- Add conflict-free course sections to a weekly calendar alongside custom events.
 
 ## Contributions
 
@@ -19,8 +21,7 @@
 Prerequisites:
 
 - Node.js 22 and npm
-- A MongoDB instance reachable through `MONGO_URI`
-- Docker and the Supabase CLI only when using the optional local Supabase stack
+- Access to a hosted Supabase project, or Docker and the Supabase CLI for the local Supabase stack
 
 Clone the project:
 
@@ -85,17 +86,15 @@ Keep `CRON_SECRET` server-only because it authorizes catalog refreshes.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `MONGO_URI` | Backend | MongoDB connection string. |
-| `DB_NAME` | Backend | MongoDB database name. |
 | `API_KEY` | Backend | Bearer token accepted by the API and optional frontend build-time alias. |
 | `CRON_SECRET` | Backend | Server-only bearer token accepted by the catalog refresh endpoint. |
 | `JWT_SECRET` | Backend | Secret required by backend health validation. |
 | `PORT` | Optional | Backend listener port, defaulting to `3000`. |
 | `NODE_ENV` | Optional | Runtime environment; local `.env` loading is disabled in production. |
-| `SUPABASE_URL` | Optional | Hosted or local Supabase API URL used by workspace setup. |
+| `SUPABASE_URL` | Backend | Hosted or local Supabase API URL used for application data. |
 | `SUPABASE_PUBLISHABLE_KEY` | Optional | Supabase publishable key synchronized for local development. |
 | `SUPABASE_ANON_KEY` | Optional | Supabase anonymous key synchronized for local development. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Optional | Supabase service-role key synchronized for local development. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Backend | Server-only Supabase service-role key used for application data. |
 | `DATABASE_URL` | Optional | Supabase PostgreSQL connection string synchronized for local development. |
 | `DB_PASSWORD` | Optional | Supabase PostgreSQL password used by local tooling. |
 | `VITE_API_BASE_URL` | Frontend | Primary backend URL; local development uses the Vite `/api` proxy. |
@@ -103,8 +102,8 @@ Keep `CRON_SECRET` server-only because it authorizes catalog refreshes.
 | `VITE_API_KEY` | Frontend | Bearer token embedded into the frontend build. |
 | `VITE_DEV` | Optional | Development flag available to the frontend. |
 
-The backend currently stores application data in MongoDB.
-The Supabase variables and [`supabase/config.toml`](supabase/config.toml) support the optional local Supabase workspace.
+The backend stores course, term, professor, and TSS routing data in Supabase.
+The remaining Supabase variables and [`supabase/config.toml`](supabase/config.toml) support the optional local Supabase workspace.
 
 ### Stopping local Supabase
 
@@ -123,6 +122,6 @@ npm run setdown -- --dry-run
 npm run setdown -- --all
 ```
 
-The setdown command does not stop MongoDB.
+The setdown command does not affect a hosted Supabase project.
 
 See [`backend/README.md`](backend/README.md) for backend structure, verification, and deployment details.

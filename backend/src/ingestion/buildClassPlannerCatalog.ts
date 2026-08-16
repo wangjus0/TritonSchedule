@@ -32,6 +32,20 @@ const DAY_ORDER: Readonly<Record<string, number>> = {
   U: 7,
 };
 
+const PRIMARY_INSTRUCTION_TYPES = new Set([
+  "in",
+  "independent study",
+  "le",
+  "lecture",
+  "se",
+  "seminar",
+]);
+
+/** Returns whether Class Planner identifies a section as primary instruction. */
+export function isPrimaryInstructionType(value: string): boolean {
+  return PRIMARY_INSTRUCTION_TYPES.has(value.trim().toLowerCase());
+}
+
 export function classPlannerSourceKey(course: ClassPlannerCourse): string {
   const sectionIds = course.sections
     .map(({ section_id }) => section_id)
@@ -183,9 +197,7 @@ export function buildLegacyCourses(
 ): Course[] {
   return courses.map((course) => {
     const primarySections = course.sections.filter(({ instruction_type_name }) =>
-      ["lecture", "independent study", "seminar"].includes(
-        instruction_type_name.toLowerCase(),
-      ),
+      isPrimaryInstructionType(instruction_type_name),
     );
     const discussions = course.sections.filter(({ instruction_type_name }) =>
       instruction_type_name.toLowerCase().includes("discussion"),
@@ -262,12 +274,18 @@ export function buildLegacySections(
   sections: readonly ClassPlannerSection[],
 ): Section[] {
   return sections.flatMap((section) => {
+    const metadata = {
+      SectionId: section.section_id,
+      SectionRef: section.section_ref,
+      SectionCode: section.section_code,
+      EventPackageIds: section.event_package_ids,
+    };
     const classMeetings = section.meetings.filter(
       ({ meeting_kind }) => meeting_kind === "class",
     );
 
     if (classMeetings.length === 0) {
-      return [{ Days: "TBA", Time: "TBA", Location: "TBA" }];
+      return [{ Days: "TBA", Time: "TBA", Location: "TBA", ...metadata }];
     }
 
     const grouped = new Map<string, ClassPlannerMeeting[]>();
@@ -299,6 +317,7 @@ export function buildLegacySections(
         .join(""),
       Time: displayTime(meetings[0]!),
       Location: displayLocation(meetings[0]!),
+      ...metadata,
     }));
   });
 }

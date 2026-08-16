@@ -85,8 +85,29 @@ describe("buildLegacyCourses", () => {
         Days: "Tue",
         Time: "5:00pm-6:20pm",
         Location: "CENTR 101",
+        SectionId: "E 00000100",
+        SectionRef: "FA26:E 00000100",
+        SectionCode: "001-000-LE",
+        EventPackageIds: ["1500000100"],
       },
       nameKey: "ada lovelace",
+    });
+  });
+
+  it("treats abbreviated seminar sections as primary sections", () => {
+    const seminar = classPlannerCourse(101, {
+      sections: [{
+        ...classPlannerCourse(101).sections[0]!,
+        instruction_type_name: "se",
+        section_code: "001-000-SE",
+      }],
+    });
+
+    const [result] = buildLegacyCourses("FA26", [seminar]);
+
+    expect(result?.Lecture).toMatchObject({
+      SectionCode: "001-000-SE",
+      EventPackageIds: ["1500000101"],
     });
   });
 });
