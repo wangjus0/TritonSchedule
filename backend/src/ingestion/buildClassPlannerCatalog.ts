@@ -262,12 +262,18 @@ export function buildLegacySections(
   sections: readonly ClassPlannerSection[],
 ): Section[] {
   return sections.flatMap((section) => {
+    const metadata = {
+      SectionId: section.section_id,
+      SectionRef: section.section_ref,
+      SectionCode: section.section_code,
+      EventPackageIds: section.event_package_ids,
+    };
     const classMeetings = section.meetings.filter(
       ({ meeting_kind }) => meeting_kind === "class",
     );
 
     if (classMeetings.length === 0) {
-      return [{ Days: "TBA", Time: "TBA", Location: "TBA" }];
+      return [{ Days: "TBA", Time: "TBA", Location: "TBA", ...metadata }];
     }
 
     const grouped = new Map<string, ClassPlannerMeeting[]>();
@@ -299,6 +305,7 @@ export function buildLegacySections(
         .join(""),
       Time: displayTime(meetings[0]!),
       Location: displayLocation(meetings[0]!),
+      ...metadata,
     }));
   });
 }

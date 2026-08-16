@@ -85,6 +85,10 @@ describe("buildLegacyCourses", () => {
         Days: "Tue",
         Time: "5:00pm-6:20pm",
         Location: "CENTR 101",
+        SectionId: "E 00000100",
+        SectionRef: "FA26:E 00000100",
+        SectionCode: "001-000-LE",
+        EventPackageIds: ["1500000100"],
       },
       nameKey: "ada lovelace",
     });

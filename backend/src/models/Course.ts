@@ -14,4 +14,6 @@ export type Course = {
   Final: Section | null;
   nameKey: string;
   rmp: RMP | null;
+  TssPackageUrls?: Record<string, string>;
+  TssFallbackUrl?: string;
 };

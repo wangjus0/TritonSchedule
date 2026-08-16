@@ -3,6 +3,9 @@ export interface DiscussionSection {
   name: string;
   time: string;
   location: string;
+  sectionRef?: string;
+  sectionCode?: string;
+  eventPackageIds?: string[];
 }
 
 export interface CourseExamSection {
@@ -21,7 +24,11 @@ export interface Course {
   color: string;
   lectureLocation?: string;
   lectureMeetings?: DiscussionSection[];
+  lectureSectionRef?: string;
+  lectureEventPackageIds?: string[];
   sectionCode?: string;
+  tssPackageUrls?: Record<string, string>;
+  tssFallbackUrl?: string;
   rmpRating?: number;
   rmpTakeAgain?: number;
   rmpAvgDifficulty?: number;
