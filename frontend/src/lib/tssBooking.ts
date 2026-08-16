@@ -8,6 +8,16 @@ const TSS_MODULE_HASH =
 
 type TssRouteKind = "event-package" | "module";
 
+/**
+ * Resolves the official TSS route for the complete section selection.
+ *
+ * Event-package routes must be shared by the lecture and every selected
+ * discussion or lab.
+ * Module fallbacks are accepted when Class Planner does not expose a package
+ * deep link.
+ * Returns `undefined` for incomplete selections, missing package metadata, or
+ * routes outside the recognized HTTPS `tss.ucsd.edu/fiori` shapes.
+ */
 export function resolveTssBookingUrl(
   course: Course,
   discussion?: DiscussionSection,

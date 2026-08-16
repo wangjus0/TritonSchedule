@@ -14,6 +14,8 @@ export type Course = {
   Final: Section | null;
   nameKey: string;
   rmp: RMP | null;
+  /** Official TSS booking URLs keyed by event package ID for this primary section. */
   TssPackageUrls?: Record<string, string>;
+  /** Official module-level TSS route used when no event-package deep link exists. */
   TssFallbackUrl?: string;
 };

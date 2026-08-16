@@ -1,6 +1,6 @@
 # TritonSchedule backend
 
-This package serves the TritonSchedule API and runs the course and Rate My Professors ingestion jobs.
+This package serves the TritonSchedule API and runs the Class Planner catalog and Rate My Professors ingestion jobs.
 
 ## Directory layout
 
@@ -42,6 +42,23 @@ npm run dev
 The repository-level `npm run dev` starts both the frontend and this backend in watch mode.
 Use the repository-level `npm run setup` first to create environment files, align the frontend and backend API keys, and install all workspace dependencies.
 The root [`README.md`](../README.md#environment-variables) documents every environment variable and the optional local Supabase setup.
+
+## Course search and TSS metadata
+
+`GET /course?course=<query>&term=<term>` returns one course record for each matching primary section.
+Lecture, discussion, and lab entries retain the display fields `Days`, `Time`, and `Location` and may include the following Class Planner identifiers:
+
+| Field | Meaning |
+| --- | --- |
+| `SectionId` | Class Planner section identifier. |
+| `SectionRef` | Term-qualified Class Planner section reference. |
+| `SectionCode` | Display code for the section. |
+| `EventPackageIds` | TSS event packages that contain the section. |
+
+Course records may also include `TssPackageUrls`, which maps event package IDs to their official TSS booking URLs for that primary section.
+When Class Planner provides a module route instead of event-package deep links, the record exposes it as `TssFallbackUrl`.
+These fields are optional because not every course or section combination has a valid TSS destination.
+The frontend enables **Open in TSS** only after it resolves one package shared by the selected lecture, discussion, and lab, or a valid module fallback, and validates the exact HTTPS `tss.ucsd.edu/fiori` route before opening a new tab.
 
 ## Verification
 

@@ -11,6 +11,15 @@ const discussion: DiscussionSection = {
   eventPackageIds: ["156420", "157065"],
 };
 
+const lab: DiscussionSection = {
+  id: "lab-1",
+  name: "001-001-LA",
+  time: "Thu 2:00pm-4:50pm",
+  location: "MAYER 2306",
+  sectionRef: "FA26:E 00001999",
+  eventPackageIds: ["156420", "158000"],
+};
+
 const eventPackageUrl =
   "https://tss.ucsd.edu/fiori#ZUSModule-display?TileType=MYMOD&" +
   "/Detail/EventPackage/SM/14433/00000000/0/0/0/" +
@@ -39,6 +48,23 @@ const course: Course = {
 describe("resolveTssBookingUrl", () => {
   it("returns the event package shared by every selected section", () => {
     expect(resolveTssBookingUrl(course, discussion)).toBe(eventPackageUrl);
+  });
+
+  it("resolves the exact package shared by the lecture, discussion, and lab", () => {
+    expect(resolveTssBookingUrl({
+      ...course,
+      labSections: [lab],
+    }, discussion, lab)).toBe(eventPackageUrl);
+  });
+
+  it("does not resolve a package when the selected lab breaks the intersection", () => {
+    expect(resolveTssBookingUrl({
+      ...course,
+      labSections: [lab],
+    }, discussion, {
+      ...lab,
+      eventPackageIds: ["158000"],
+    })).toBeUndefined();
   });
 
   it("does not open a different package when the combination is invalid", () => {
