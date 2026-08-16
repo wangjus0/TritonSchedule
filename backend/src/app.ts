@@ -16,12 +16,16 @@ if (process.env.NODE_ENV !== 'production') {
 
 const app = express();
 
-const allowedOrigins = [
+const allowedOrigins: Array<string | RegExp> = [
   "https://tritonschedule.com",
   "https://triton-schedule-alpha.vercel.app",
   "https://triton-schedule-jl29ml1fz-justin-wangs-projects-e5966906.vercel.app",
   "http://localhost:8080",
 ];
+
+if (process.env.NODE_ENV !== "production") {
+  allowedOrigins.push(/^http:\/\/(localhost|127\.0\.0\.1):\d+$/);
+}
 
 app.use(
   cors({

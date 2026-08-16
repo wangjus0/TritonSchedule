@@ -81,12 +81,14 @@ npm run dev:backend
 The setup command reads [`backend/.env.example`](backend/.env.example) and [`frontend/.env.example`](frontend/.env.example).
 Keep `API_KEY` and `VITE_API_KEY` identical because the frontend sends the value as a bearer token and the backend checks it on protected requests.
 The frontend no longer has a built-in API key fallback, so production builds must provide `VITE_API_KEY` or the supported `API_KEY` alias.
+Keep `CRON_SECRET` server-only because it authorizes catalog refreshes.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `MONGO_URI` | Backend | MongoDB connection string. |
 | `DB_NAME` | Backend | MongoDB database name. |
 | `API_KEY` | Backend | Bearer token accepted by the API and optional frontend build-time alias. |
+| `CRON_SECRET` | Backend | Server-only bearer token accepted by the catalog refresh endpoint. |
 | `JWT_SECRET` | Backend | Secret required by backend health validation. |
 | `PORT` | Optional | Backend listener port, defaulting to `3000`. |
 | `NODE_ENV` | Optional | Runtime environment; local `.env` loading is disabled in production. |

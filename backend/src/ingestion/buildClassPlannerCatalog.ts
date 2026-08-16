@@ -205,8 +205,8 @@ export function buildLegacyCourses(
       Term: term,
       Teacher: teacher,
       Lecture: firstLegacySection(primarySections),
-      Labs: legacySections(labs),
-      Discussions: legacySections(discussions),
+      Labs: buildLegacySections(labs),
+      Discussions: buildLegacySections(discussions),
       Midterms: examMeetings
         .filter(({ meeting_kind }) => meeting_kind.toLowerCase() !== "final")
         .map(toLegacyMeeting),
@@ -255,10 +255,10 @@ function buildEventPackageUrl(
 function firstLegacySection(
   sections: readonly ClassPlannerSection[],
 ): Section | null {
-  return legacySections(sections)[0] ?? null;
+  return buildLegacySections(sections)[0] ?? null;
 }
 
-function legacySections(
+export function buildLegacySections(
   sections: readonly ClassPlannerSection[],
 ): Section[] {
   return sections.flatMap((section) => {

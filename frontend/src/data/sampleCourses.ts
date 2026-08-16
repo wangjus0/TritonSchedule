@@ -19,9 +19,13 @@ export interface Course {
   schedule: string;
   description: string;
   color: string;
+  lectureLocation?: string;
+  lectureMeetings?: DiscussionSection[];
+  sectionCode?: string;
   rmpRating?: number;
   rmpTakeAgain?: number;
   rmpAvgDifficulty?: number;
+  rmpProfileUrl?: string;
   discussionSections?: DiscussionSection[];
   labSections?: DiscussionSection[];
   midtermSections?: CourseExamSection[];

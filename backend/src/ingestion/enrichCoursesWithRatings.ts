@@ -71,6 +71,7 @@ export async function enrichCoursesWithRatings(
           takeAgainPercent: normalizePercentage(search.wouldTakeAgainPercent),
           name: search.formattedName.toLowerCase(),
           nameKey: teacher.toLowerCase(),
+          profileUrl: search.link,
         };
 
         rmpDataMap.set(teacher.toLowerCase(), item);

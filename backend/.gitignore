@@ -19,3 +19,6 @@ coverage
 
 # Config
 .vercel
+
+# Artifacts
+.lavish/

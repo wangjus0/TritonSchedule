@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { mapOfferingToCourse } from "../../src/services/supabaseRepository.js";
+import { mapOfferingToCourses } from "../../src/services/supabaseRepository.js";
 
 const classMeeting = {
   meeting_ordinal: 0,
@@ -20,9 +20,11 @@ const classMeeting = {
 };
 
 describe("mapOfferingToCourse", () => {
-  it("maps offering, section, and meeting foreign keys into the course API shape", () => {
+  it("maps every primary section and meeting group into the course API shape", () => {
     const offering = {
       id: 401,
+      source_key: "CSE-100:E 00000001,E 00000002,E 00000003",
+      instructors_search: "Ada Lovelace Grace Hopper",
       term_code: "FA26",
       subject_code: "CSE",
       course_code: "100",
@@ -60,7 +62,37 @@ describe("mapOfferingToCourse", () => {
           waitlist_available: null,
           status: "AC",
           instructors: ["Ada Lovelace"],
-          class_planner_section_meetings: [classMeeting],
+          class_planner_section_meetings: [
+            classMeeting,
+            {
+              ...classMeeting,
+              meeting_ordinal: 1,
+              day_code: "W",
+              day_name: "Wednesday",
+              start_minutes: 1140,
+              end_minutes: 1200,
+              start_time_display: "7:00pm",
+              end_time_display: "8:00pm",
+            },
+          ],
+        },
+        {
+          id: 9003,
+          section_id: "E 00000003",
+          section_ref: "FA26:E 00000003",
+          section_code: "002-000-LE",
+          instruction_type_name: "lecture",
+          capacity: 100,
+          enrolled: 80,
+          seats_available: 20,
+          waitlist_capacity: null,
+          waitlist_enrolled: 0,
+          waitlist_available: null,
+          status: "AC",
+          instructors: ["Grace Hopper"],
+          class_planner_section_meetings: [
+            { ...classMeeting, day_code: "M", day_name: "Monday" },
+          ],
         },
         {
           id: 9002,
@@ -90,23 +122,34 @@ describe("mapOfferingToCourse", () => {
       nameKey: "ada lovelace",
     };
 
-    const result = mapOfferingToCourse(
-      offering as Parameters<typeof mapOfferingToCourse>[0],
+    const result = mapOfferingToCourses(
+      offering as Parameters<typeof mapOfferingToCourses>[0],
       new Map([[rating.nameKey, rating]]),
     );
 
-    expect(result).toMatchObject({
-      id: "401",
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      id: "FA26:E 00000001",
       Name: "CSE 100: Advanced Data Structures",
       Term: "FA26",
       Teacher: "Ada Lovelace",
+      SectionCode: "001-000-LE",
       Lecture: {
         Days: "Tue",
         Time: "5:00pm-6:20pm",
         Location: "CENTR 101",
       },
+      Lectures: [
+        { Days: "Tue" },
+        { Days: "Wed", Time: "7:00pm-8:00pm" },
+      ],
       Discussions: [{ Days: "Thu" }],
       rmp: rating,
+    });
+    expect(result[1]).toMatchObject({
+      id: "FA26:E 00000003",
+      Teacher: "Grace Hopper",
+      SectionCode: "002-000-LE",
     });
   });
 });

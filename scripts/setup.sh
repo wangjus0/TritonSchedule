@@ -328,7 +328,7 @@ start_local_supabase() {
 }
 
 validate_backend_env() {
-  local required=(SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY API_KEY JWT_SECRET)
+  local required=(SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY CRON_SECRET API_KEY JWT_SECRET)
   local missing=()
 
   for key in "${required[@]}"; do
@@ -406,6 +406,7 @@ install_deps_for() {
 ensure_env_from_example "$BACKEND_ENV" "$ROOT_DIR/backend/.env.example" "backend"
 ensure_env_from_example "$FRONTEND_ENV" "$ROOT_DIR/frontend/.env.example" "frontend"
 ensure_api_keys
+ensure_backend_secret CRON_SECRET
 ensure_backend_secret JWT_SECRET
 ensure_no_mongo_env
 
