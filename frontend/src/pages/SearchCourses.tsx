@@ -438,7 +438,7 @@ export default function SearchCourses() {
               <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 aria-label="Search courses"
-                placeholder="Search by course, instructor, or keyword"
+                placeholder="Course, instructor, or keyword"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 className="h-14 rounded-lg border-border bg-white pl-12 pr-12 text-base shadow-none placeholder:text-muted-foreground/80 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15"
@@ -456,46 +456,45 @@ export default function SearchCourses() {
             </div>
 
             <div className="mt-6 flex min-h-7 items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-foreground">
-                {isBackendLoading || isDebouncingSearch
-                  ? "Searching courses"
-                  : displayedCourses.length > 0
-                    ? `${displayedCourses.length} section${displayedCourses.length === 1 ? "" : "s"} found`
-                    : searchQuery.trim()
-                      ? "No sections found"
-                      : "Find your next course"}
-              </p>
-              {activeTerm && <p className="text-xs font-medium text-muted-foreground">{formatTerm(activeTerm)}</p>}
+              {(isBackendLoading || isDebouncingSearch || searchQuery.trim()) && (
+                <p className="text-sm font-semibold text-foreground">
+                  {isBackendLoading || isDebouncingSearch
+                    ? "Searching"
+                    : displayedCourses.length > 0
+                      ? `${displayedCourses.length} section${displayedCourses.length === 1 ? "" : "s"}`
+                      : "No results"}
+                </p>
+              )}
+              {activeTerm && <p className="ml-auto text-xs font-medium text-muted-foreground">{formatTerm(activeTerm)}</p>}
             </div>
 
             <div className="mt-4 overflow-hidden border-y border-border">
-              <div className="hidden grid-cols-[1.05fr_.8fr_1.2fr_.85fr_.55fr] gap-4 border-b border-border px-5 py-3 text-xs font-medium text-muted-foreground md:grid">
-                <span>Section</span>
-                <span>Instructor</span>
-                <span>Days / Time</span>
-                <span>Location</span>
-                <span>Rating</span>
-              </div>
+              {displayedCourses.length > 0 && !isBackendLoading && !isDebouncingSearch && (
+                <div className="hidden grid-cols-[1.05fr_.8fr_1.2fr_.85fr_.55fr] gap-4 border-b border-border px-5 py-3 text-xs font-medium text-muted-foreground md:grid">
+                  <span>Section</span>
+                  <span>Instructor</span>
+                  <span>Meeting</span>
+                  <span>Location</span>
+                  <span>Rating</span>
+                </div>
+              )}
 
               {isBackendLoading || isDebouncingSearch ? (
                 <div className="flex min-h-40 items-center justify-center gap-3 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Looking for matching sections
+                  Searching
                 </div>
               ) : searchState === "error" ? (
                 <SearchState
-                  title="Course search is unavailable"
-                  description="We could not reach the course catalog. Try again in a moment."
+                  title="Search unavailable"
+                  description="Try again shortly."
                 />
               ) : searchQuery.trim().length === 0 ? (
-                <SearchState
-                  title="Search the course catalog"
-                  description="Try a course code like CSE 100, a title, or an instructor name."
-                />
+                <SearchState title="Search courses" />
               ) : displayedCourses.length === 0 ? (
                 <SearchState
-                  title="No matching sections"
-                  description="Check the course code or try a broader search."
+                  title="No results"
+                  description="Try another search."
                 />
               ) : (
                 <div className="divide-y divide-border">
@@ -535,11 +534,6 @@ export default function SearchCourses() {
               )}
             </div>
 
-            {displayedCourses.length > 0 && !isBackendLoading && (
-              <p className="px-1 py-4 text-xs text-muted-foreground">
-                Displaying all {displayedCourses.length} matching section{displayedCourses.length === 1 ? "" : "s"}
-              </p>
-            )}
           </div>
         </section>
 
@@ -674,10 +668,7 @@ export default function SearchCourses() {
           ) : (
             <div className="mx-auto flex min-h-[420px] max-w-sm flex-col items-center justify-center text-center">
               <CalendarDays className="h-6 w-6 text-muted-foreground" />
-              <h2 className="mt-4 text-base font-semibold text-foreground">Select a course section</h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Course details and a weekly preview will appear here.
-              </p>
+              <h2 className="mt-4 text-base font-semibold text-foreground">Choose a section</h2>
             </div>
           )}
         </aside>
@@ -686,12 +677,14 @@ export default function SearchCourses() {
   );
 }
 
-function SearchState({ title, description }: { title: string; description: string }) {
+function SearchState({ title, description }: { title: string; description?: string }) {
   return (
     <div className="flex min-h-44 flex-col items-center justify-center px-6 text-center">
       <Search className="h-5 w-5 text-muted-foreground" />
       <p className="mt-3 text-sm font-semibold text-foreground">{title}</p>
-      <p className="mt-1 max-w-sm text-sm leading-6 text-muted-foreground">{description}</p>
+      {description && (
+        <p className="mt-1 max-w-sm text-sm leading-6 text-muted-foreground">{description}</p>
+      )}
     </div>
   );
 }
