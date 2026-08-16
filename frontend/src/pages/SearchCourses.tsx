@@ -1,9 +1,26 @@
 import { useState, useMemo, useEffect } from "react";
-import { BookOpen, ChevronDown, ChevronUp, Loader2, Search, Star } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarDays,
+  Check,
+  ChevronDown,
+  Clock3,
+  ExternalLink,
+  Loader2,
+  MapPin,
+  Search,
+  UserRound,
+  UsersRound,
+  X,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Course, CourseExamSection, DiscussionSection } from "@/data/sampleCourses";
 import { useCalendar } from "@/context/CalendarContext";
-import { Weekday } from "@/types/calendar";
+import { CalendarEvent, Weekday } from "@/types/calendar";
+import { cn } from "@/lib/utils";
+import { getProfessorProfileUrl, normalizeProfessorProfileUrl } from "@/lib/professorProfile";
+import { findConflictingEvents, hasScheduleConflict } from "@/lib/scheduleConflicts";
 import { toast } from "sonner";
 
 const API_KEY =
@@ -90,7 +107,6 @@ function createApiRequestInit(signal: AbortSignal): RequestInit {
 
 export default function SearchCourses() {
   const SEARCH_RESULTS_CACHE_KEY = "searchCourseResultsCache";
-  const EXPANDED_COURSES_KEY = "expandedSearchCourseIds";
   const [searchQuery, setSearchQuery] = useState(() =>
     sessionStorage.getItem("searchCoursesQuery") ?? ""
   );
@@ -123,17 +139,7 @@ export default function SearchCourses() {
     }
   });
   const [activeTerm, setActiveTerm] = useState<string>("");
-  const [expandedCourseIds, setExpandedCourseIds] = useState<Set<string>>(() => {
-    const stored = sessionStorage.getItem(EXPANDED_COURSES_KEY);
-    if (!stored) return new Set();
-
-    try {
-      const parsed = JSON.parse(stored) as string[];
-      return new Set(Array.isArray(parsed) ? parsed : []);
-    } catch {
-      return new Set();
-    }
-  });
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedDiscussionIds, setSelectedDiscussionIds] = useState<Record<string, string>>({});
   const [selectedLabIds, setSelectedLabIds] = useState<Record<string, string>>({});
   const [lastFetchedQuery, setLastFetchedQuery] = useState(() => {
@@ -163,10 +169,6 @@ export default function SearchCourses() {
   useEffect(() => {
     sessionStorage.setItem("searchCoursesQuery", searchQuery);
   }, [searchQuery]);
-
-  useEffect(() => {
-    sessionStorage.setItem(EXPANDED_COURSES_KEY, JSON.stringify(Array.from(expandedCourseIds)));
-  }, [expandedCourseIds]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -291,73 +293,120 @@ export default function SearchCourses() {
     );
   }, [events]);
 
+  const selectedCourse = useMemo(
+    () => displayedCourses.find((course) => course.id === selectedCourseId) ?? displayedCourses[0] ?? null,
+    [displayedCourses, selectedCourseId]
+  );
+
+  const scheduledEvents = useMemo(
+    () => events.filter((event) => !selectedCourse || event.courseId !== selectedCourse.id),
+    [events, selectedCourse]
+  );
+
+  const candidateLectureEvents = useMemo(
+    () => selectedCourse ? courseScheduleToEvents(selectedCourse, generateCalendarColor(selectedCourse.id)) : [],
+    [selectedCourse]
+  );
+
+  const availableDiscussionSections = useMemo(
+    () => filterConflictFreeSections(
+      selectedCourse,
+      selectedCourse?.discussionSections,
+      [...scheduledEvents, ...candidateLectureEvents],
+      "Discussion"
+    ),
+    [selectedCourse, scheduledEvents, candidateLectureEvents]
+  );
+
+  const selectedDiscussion = useMemo(
+    () => resolveSelectedSection(selectedCourse?.id, selectedDiscussionIds, availableDiscussionSections),
+    [selectedCourse, selectedDiscussionIds, availableDiscussionSections]
+  );
+
+  const candidateDiscussionEvents = useMemo(
+    () => selectedCourse && selectedDiscussion
+      ? sectionScheduleToEvents(
+          selectedCourse,
+          selectedDiscussion,
+          "Discussion",
+          generateCalendarColor(selectedCourse.id)
+        )
+      : [],
+    [selectedCourse, selectedDiscussion]
+  );
+
+  const availableLabSections = useMemo(
+    () => filterConflictFreeSections(
+      selectedCourse,
+      selectedCourse?.labSections,
+      [...scheduledEvents, ...candidateLectureEvents, ...candidateDiscussionEvents],
+      "Lab"
+    ),
+    [selectedCourse, scheduledEvents, candidateLectureEvents, candidateDiscussionEvents]
+  );
+
+  const selectedLab = useMemo(
+    () => resolveSelectedSection(selectedCourse?.id, selectedLabIds, availableLabSections),
+    [selectedCourse, selectedLabIds, availableLabSections]
+  );
+
+  const candidateLabEvents = useMemo(
+    () => selectedCourse && selectedLab
+      ? sectionScheduleToEvents(
+          selectedCourse,
+          selectedLab,
+          "Lab",
+          generateCalendarColor(selectedCourse.id)
+        )
+      : [],
+    [selectedCourse, selectedLab]
+  );
+
+  const candidateScheduleEvents = useMemo(
+    () => [...candidateLectureEvents, ...candidateDiscussionEvents, ...candidateLabEvents],
+    [candidateLectureEvents, candidateDiscussionEvents, candidateLabEvents]
+  );
+
+  const conflictingScheduledEvents = useMemo(
+    () => findConflictingEvents(candidateScheduleEvents, scheduledEvents),
+    [candidateScheduleEvents, scheduledEvents]
+  );
+
+  const conflictingCandidateEventIds = useMemo(
+    () => new Set(
+      candidateScheduleEvents
+        .filter((candidateEvent) => hasScheduleConflict([candidateEvent], scheduledEvents))
+        .map((candidateEvent) => candidateEvent.id)
+    ),
+    [candidateScheduleEvents, scheduledEvents]
+  );
+
   const handleAddToCalendar = (
     course: Course,
     selectedDiscussion?: DiscussionSection,
     selectedLab?: DiscussionSection
   ) => {
-    const calendarColor = generateCalendarColor();
-    const lectureSchedule = parseCourseSchedule(course.schedule);
-    const startTime = lectureSchedule?.startTime ?? "09:00";
-    const endTime = lectureSchedule?.endTime ?? "10:30";
-    const uniqueDays = lectureSchedule?.days ?? [];
+    const calendarColor = generateCalendarColor(course.id);
+    const eventsToAdd = [
+      ...courseScheduleToEvents(course, calendarColor),
+      ...(selectedDiscussion
+        ? sectionScheduleToEvents(course, selectedDiscussion, "Discussion", calendarColor)
+        : []),
+      ...(selectedLab ? sectionScheduleToEvents(course, selectedLab, "Lab", calendarColor) : []),
+    ];
+    const otherScheduledEvents = events.filter((event) => event.courseId !== course.id);
 
-    uniqueDays.forEach((day) => {
-      addEvent({
-        id: `${course.id}-${day}`,
-        title: course.name,
-        dayOfWeek: day,
-        startTime,
-        endTime,
-        color: calendarColor,
-        isCourse: true,
-        courseId: course.id,
-        eventType: "Lecture",
-      });
-    });
-
-    if (selectedDiscussion) {
-      const discussionSchedule = parseCourseSchedule(selectedDiscussion.time);
-      if (discussionSchedule) {
-        discussionSchedule.days.forEach((discussionDay) => {
-          addEvent({
-            id: `${course.id}-${selectedDiscussion.id}-${discussionDay}`,
-            title: `${course.name} (${selectedDiscussion.name})`,
-            dayOfWeek: discussionDay,
-            startTime: discussionSchedule.startTime,
-            endTime: discussionSchedule.endTime,
-            color: calendarColor,
-            isCourse: true,
-            courseId: course.id,
-            eventType: "Discussion",
-          });
-        });
-      }
-    }
-
-    if (selectedLab) {
-      const labSchedule = parseCourseSchedule(selectedLab.time);
-      if (labSchedule) {
-        labSchedule.days.forEach((labDay) => {
-          addEvent({
-            id: `${course.id}-${selectedLab.id}-${labDay}`,
-            title: `${course.name} (${selectedLab.name})`,
-            dayOfWeek: labDay,
-            startTime: labSchedule.startTime,
-            endTime: labSchedule.endTime,
-            color: calendarColor,
-            isCourse: true,
-            courseId: course.id,
-            eventType: "Lab",
-          });
-        });
-      }
-    }
-
-    if (uniqueDays.length === 0 && !selectedDiscussion && !selectedLab) {
+    if (eventsToAdd.length === 0) {
       toast.error("Could not parse this course schedule for calendar placement.");
       return;
     }
+
+    if (hasScheduleConflict(eventsToAdd, otherScheduledEvents)) {
+      toast.error("This selection conflicts with your existing schedule.");
+      return;
+    }
+
+    eventsToAdd.forEach(addEvent);
 
     const selectedSections = [selectedDiscussion?.name, selectedLab?.name].filter(
       (name): name is string => Boolean(name)
@@ -366,47 +415,11 @@ export default function SearchCourses() {
     toast.success(`${course.name}${sectionInfo} added to your calendar!`);
   };
 
-  const toggleExpandedCourse = (courseId: string) => {
-    setExpandedCourseIds((previous) => {
-      const next = new Set(previous);
-      if (next.has(courseId)) {
-        next.delete(courseId);
-      } else {
-        next.add(courseId);
-      }
-      return next;
-    });
-  };
-
-  const getSelectedDiscussion = (course: Course): DiscussionSection | undefined => {
-    const selectedId = selectedDiscussionIds[course.id];
-    if (!selectedId) {
-      return course.discussionSections?.[0];
-    }
-
-    return (
-      course.discussionSections?.find((section) => section.id === selectedId) ??
-      course.discussionSections?.[0]
-    );
-  };
-
   const setSelectedDiscussionForCourse = (courseId: string, discussionId: string) => {
     setSelectedDiscussionIds((previous) => ({
       ...previous,
       [courseId]: discussionId,
     }));
-  };
-
-  const getSelectedLab = (course: Course): DiscussionSection | undefined => {
-    const selectedId = selectedLabIds[course.id];
-    if (!selectedId) {
-      return course.labSections?.[0];
-    }
-
-    return (
-      course.labSections?.find((section) => section.id === selectedId) ??
-      course.labSections?.[0]
-    );
   };
 
   const setSelectedLabForCourse = (courseId: string, labId: string) => {
@@ -417,275 +430,662 @@ export default function SearchCourses() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex justify-center px-3 pb-6 pt-6 sm:px-5 sm:pt-10 lg:pt-[12vh]">
-      <div className="w-full max-w-5xl">
-        <div className="text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/80">
-            Course Explorer
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
-            Search Courses
-          </h1>
-          <p className="mt-3 text-sm text-muted-foreground sm:text-base">
-            Find and add courses to your calendar
-          </p>
-        </div>
-
-        <div className="mx-auto mt-5 max-w-5xl">
-          <div className="overflow-hidden rounded-[1.45rem] border border-border/80 bg-[linear-gradient(160deg,hsl(0_0%_100%_/_0.9),hsl(204_50%_96%_/_0.92))] shadow-[0_24px_50px_hsl(208_45%_58%_/_0.24)] backdrop-blur-xl">
-            <div className="flex items-center gap-3 border-b border-border/70 px-4 py-4 transition-all focus-within:border-primary/70 focus-within:bg-background/20 focus-within:shadow-[inset_0_-1px_0_hsl(var(--primary)/0.55),0_0_0_2px_hsl(var(--primary)/0.16)] sm:gap-4 sm:px-6 sm:py-5">
-              <Search className="h-5 w-5 text-muted-foreground sm:h-7 sm:w-7" />
+    <div className="min-h-[calc(100vh-4rem)] bg-white">
+      <div className="grid min-h-[calc(100vh-4rem)] xl:grid-cols-[minmax(0,1.55fr)_minmax(360px,0.95fr)]">
+        <section className="min-w-0 px-4 py-6 sm:px-7 lg:px-8 xl:border-r xl:border-border">
+          <div className="mx-auto w-full max-w-[880px]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search courses by name, number, or instructor"
+                aria-label="Search courses"
+                placeholder="Search by course, instructor, or keyword"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-auto min-h-[2.4rem] border-0 bg-transparent p-0 text-[1.05rem] leading-[1.15] text-foreground caret-primary placeholder:text-[0.95rem] placeholder:text-muted-foreground/85 shadow-none outline-none ring-0 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 sm:min-h-[3rem] sm:text-[1.3rem] sm:placeholder:text-[1.05rem] md:text-[1.42rem] md:placeholder:text-[1.18rem]"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="h-14 rounded-lg border-border bg-white pl-12 pr-12 text-base shadow-none placeholder:text-muted-foreground/80 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
 
-            <div className="p-4 sm:p-5">
-              {searchQuery.trim().length === 0 ? (
-                <div className="px-3 py-7 text-center sm:px-5 sm:py-8">
-                  <p className="text-lg font-semibold text-foreground">Search for a course to get started</p>
-                  <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                    Try a course name, number, or instructor.
-                  </p>
-                </div>
-              ) : isBackendLoading || isDebouncingSearch ? (
-                <div className="py-10 text-center sm:py-12">
-                  <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-border/70 bg-background/40">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                  <p className="text-xl font-semibold text-foreground">Searching courses...</p>
-                  <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                    {`Looking for matches for "${searchQuery.trim()}".`}
-                  </p>
+            <div className="mt-6 flex min-h-7 items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-foreground">
+                {isBackendLoading || isDebouncingSearch
+                  ? "Searching courses"
+                  : displayedCourses.length > 0
+                    ? `${displayedCourses.length} section${displayedCourses.length === 1 ? "" : "s"} found`
+                    : searchQuery.trim()
+                      ? "No sections found"
+                      : "Find your next course"}
+              </p>
+              {activeTerm && <p className="text-xs font-medium text-muted-foreground">{formatTerm(activeTerm)}</p>}
+            </div>
+
+            <div className="mt-4 overflow-hidden border-y border-border">
+              <div className="hidden grid-cols-[1.05fr_.8fr_1.2fr_.85fr_.55fr] gap-4 border-b border-border px-5 py-3 text-xs font-medium text-muted-foreground md:grid">
+                <span>Section</span>
+                <span>Instructor</span>
+                <span>Days / Time</span>
+                <span>Location</span>
+                <span>Rating</span>
+              </div>
+
+              {isBackendLoading || isDebouncingSearch ? (
+                <div className="flex min-h-40 items-center justify-center gap-3 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Looking for matching sections
                 </div>
               ) : searchState === "error" ? (
-                <div className="py-8 text-center sm:py-10">
-                  <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-border/70 bg-background/40">
-                    <BookOpen className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <p className="text-xl font-semibold text-foreground">Search unavailable</p>
-                  <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                    Could not reach the backend server. Please make sure it is running and try again.
-                  </p>
-                </div>
+                <SearchState
+                  title="Course search is unavailable"
+                  description="We could not reach the course catalog. Try again in a moment."
+                />
+              ) : searchQuery.trim().length === 0 ? (
+                <SearchState
+                  title="Search the course catalog"
+                  description="Try a course code like CSE 100, a title, or an instructor name."
+                />
               ) : displayedCourses.length === 0 ? (
-                <div className="py-8 text-center sm:py-10">
-                  <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-border/70 bg-background/40">
-                    <BookOpen className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <p className="text-xl font-semibold text-foreground">No courses found</p>
-                  <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                    Please try again.
-                  </p>
-                  <button
-                    type="button"
-                    className="mt-5 rounded-lg border border-border/80 bg-background/55 px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-                    onClick={() => setSearchQuery("")}
-                  >
-                    Clear search
-                  </button>
-                </div>
+                <SearchState
+                  title="No matching sections"
+                  description="Check the course code or try a broader search."
+                />
               ) : (
-                <div>
-                  <div className="mb-3 flex items-center justify-center">
-                    <p className="text-xs text-muted-foreground text-center">
-                      {isBackendLoading ? "Loading..." : `${displayedCourses.length} result${displayedCourses.length === 1 ? "" : "s"}`}
-                    </p>
-                  </div>
-                  <div className="max-h-[min(56vh,520px)] space-y-1.5 overflow-y-auto pr-1 sm:max-h-[min(58vh,520px)]">
-                    {displayedCourses.map((course) => (
-                      <div
+                <div className="divide-y divide-border">
+                  {displayedCourses.map((course, index) => {
+                    const isSelected = selectedCourse?.id === course.id;
+                    const schedule = getCourseScheduleParts(course);
+                    return (
+                      <button
                         key={course.id}
-                        className="rounded-xl border border-transparent px-3 py-2.5 transition-colors hover:border-border/60 hover:bg-accent/35"
-                      >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="min-w-0 flex items-start gap-3">
-                            <span className="rounded-md border border-border/65 bg-background/45 p-1.5">
-                              <BookOpen className="h-4 w-4 text-muted-foreground" />
-                            </span>
-                            <div className="min-w-0">
-                              <p className="truncate text-[1.02rem] text-foreground">{course.name}</p>
-                              <p className="truncate text-sm text-muted-foreground">{course.instructor}</p>
-                              <p className="truncate text-xs text-muted-foreground/90">
-                                {formatScheduleDisplay(course.schedule)}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="w-full shrink-0 sm:w-[220px]">
-                              <button
-                                type="button"
-                                disabled={addedCourseIds.has(course.id)}
-                                onClick={() =>
-                                  handleAddToCalendar(
-                                    course,
-                                    getSelectedDiscussion(course),
-                                    getSelectedLab(course)
-                                  )
-                                }
-                                className="w-full rounded-md border border-border/70 bg-background/45 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-55"
-                              >
-                              {addedCourseIds.has(course.id) ? "Added" : "Add"}
-                            </button>
-
-                            <div className="mt-2 grid grid-cols-2 gap-2">
-                              <span className="inline-flex items-center justify-center gap-1 rounded-md border border-border/70 bg-background/45 px-2 py-1 text-xs text-muted-foreground">
-                                <Star className="h-3.5 w-3.5" />
-                                {course.rmpRating ? `RMP ${course.rmpRating.toFixed(1)}` : "RMP N/A"}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => toggleExpandedCourse(course.id)}
-                                className="inline-flex items-center justify-center gap-1 rounded-md border border-border/70 bg-background/45 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent"
-                              >
-                                {expandedCourseIds.has(course.id) ? (
-                                  <ChevronUp className="h-3.5 w-3.5" />
-                                ) : (
-                                  <ChevronDown className="h-3.5 w-3.5" />
-                                )}
-                                Details
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {expandedCourseIds.has(course.id) && (
-                          <div className="mt-3 grid gap-2 rounded-lg border border-border/70 bg-background/35 p-3 text-xs text-muted-foreground sm:grid-cols-2">
-                            <div>
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground/80">Rate My Professor</p>
-                              <div className="mt-1.5 h-28 space-y-1.5 rounded-md border border-border/60 bg-background/40 p-2 sm:h-24">
-                                <div className="flex items-center justify-between gap-2 text-xs">
-                                  <span className="text-muted-foreground">Rating</span>
-                                  <span className="font-medium text-foreground">
-                                    {course.rmpRating ? `${course.rmpRating.toFixed(1)} / 5.0` : "Unavailable"}
-                                  </span>
-                                </div>
-                                <div className="flex items-center justify-between gap-2 text-xs">
-                                  <span className="text-muted-foreground">Take Again</span>
-                                  <span className="font-medium text-foreground">
-                                    {course.rmpTakeAgain !== undefined ? `${course.rmpTakeAgain}%` : "Unavailable"}
-                                  </span>
-                                </div>
-                                <div className="flex items-center justify-between gap-2 text-xs">
-                                  <span className="text-muted-foreground">Difficulty</span>
-                                  <span className="font-medium text-foreground">
-                                    {course.rmpAvgDifficulty ? course.rmpAvgDifficulty.toFixed(1) : "Unavailable"}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <div>
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground/80">Discussion Sections</p>
-                              {course.discussionSections && course.discussionSections.length > 0 ? (
-                                <div className="mt-1.5 h-28 space-y-1.5 overflow-y-auto rounded-md border border-border/60 bg-background/40 p-2 sm:h-24">
-                                  {course.discussionSections.map((section) => {
-                                    const isSelected = getSelectedDiscussion(course)?.id === section.id;
-                                    return (
-                                      <button
-                                        key={section.id}
-                                        type="button"
-                                        onClick={() => setSelectedDiscussionForCourse(course.id, section.id)}
-                                        className={`w-full rounded-md border px-2 py-1.5 text-left text-xs transition-colors ${
-                                          isSelected
-                                            ? "border-primary/45 bg-primary/10 text-foreground"
-                                            : "border-border/60 bg-background/50 text-muted-foreground hover:bg-accent/45"
-                                        }`}
-                                      >
-                                        <p className="truncate font-medium">{section.name}</p>
-                                        <p className="truncate text-[11px] opacity-90">{formatSectionDetail(section)}</p>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <div className="mt-1.5 flex h-28 items-center justify-center rounded-md border border-border/60 bg-background/40 p-2 text-center text-xs text-foreground sm:h-24">
-                                  None available
-                                </div>
-                              )}
-                            </div>
-
-                            <div>
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground/80">Midterm</p>
-                              {course.midtermSections && course.midtermSections.length > 0 ? (
-                                <div className="mt-1.5 h-28 overflow-hidden rounded-md border border-border/60 bg-background/40 p-2 sm:h-24">
-                                  <div className="divide-y divide-border/60">
-                                  {course.midtermSections.map((midterm) => (
-                                    <div
-                                      key={midterm.id}
-                                      className="py-1 text-xs text-muted-foreground first:pt-0 last:pb-0"
-                                    >
-                                      <p className="truncate font-medium text-foreground">{midterm.name}</p>
-                                      <p className="truncate text-[11px] opacity-90">{formatSectionDetail(midterm)}</p>
-                                    </div>
-                                  ))}
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="mt-1.5 flex h-28 items-center justify-center rounded-md border border-border/60 bg-background/40 p-2 text-center text-xs text-foreground sm:h-24">
-                                  None scheduled
-                                </div>
-                              )}
-                            </div>
-
-                            <div>
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground/80">Labs</p>
-                              {course.labSections && course.labSections.length > 0 ? (
-                                <div className="mt-1.5 h-28 space-y-1.5 overflow-y-auto rounded-md border border-border/60 bg-background/40 p-2 sm:h-24">
-                                  {course.labSections.map((section) => {
-                                    const isSelected = getSelectedLab(course)?.id === section.id;
-                                    return (
-                                      <button
-                                        key={section.id}
-                                        type="button"
-                                        onClick={() => setSelectedLabForCourse(course.id, section.id)}
-                                        className={`w-full rounded-md border px-2 py-1.5 text-left text-xs transition-colors ${
-                                          isSelected
-                                            ? "border-primary/45 bg-primary/10 text-foreground"
-                                            : "border-border/60 bg-background/50 text-muted-foreground hover:bg-accent/45"
-                                        }`}
-                                      >
-                                        <p className="truncate font-medium">{section.name}</p>
-                                        <p className="truncate text-[11px] opacity-90">{formatSectionDetail(section)}</p>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <div className="mt-1.5 flex h-28 items-center justify-center rounded-md border border-border/60 bg-background/40 p-2 text-center text-xs text-foreground sm:h-24">
-                                  None available
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="sm:col-span-2">
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground/80">Final</p>
-                              {course.finalSection ? (
-                                <div className="mt-1.5 rounded-md border border-border/60 bg-background/40 p-2 text-xs text-muted-foreground">
-                                  <p className="font-medium text-foreground">{course.finalSection.name}</p>
-                                  <p className="mt-0.5 text-[11px] opacity-90">{formatSectionDetail(course.finalSection)}</p>
-                                </div>
-                              ) : (
-                                <div className="mt-1.5 flex h-28 items-center justify-center rounded-md border border-border/60 bg-background/40 p-2 text-center text-xs text-foreground sm:h-24">
-                                  None scheduled
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                        type="button"
+                        onClick={() => setSelectedCourseId(course.id)}
+                        className={cn(
+                          "relative grid w-full gap-2 px-5 py-4 text-left transition-colors hover:bg-muted/55 md:grid-cols-[1.05fr_.8fr_1.2fr_.85fr_.55fr] md:items-center md:gap-4",
+                          isSelected && "bg-primary/[0.055] before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-primary"
                         )}
-                      </div>
-                    ))}
-                  </div>
+                        aria-pressed={isSelected}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold text-foreground">
+                            {formatSectionCode(course, index)}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">Lecture</span>
+                        </span>
+                        <span className="truncate text-sm text-foreground/80">{course.instructor}</span>
+                        <span className="text-sm text-foreground/80">
+                          <span className="block">{schedule.days}</span>
+                          <span className="block">{schedule.time}</span>
+                        </span>
+                        <span className="truncate text-sm text-foreground/80">{course.lectureLocation || "TBA"}</span>
+                        <span className="text-sm text-foreground/80">
+                          {course.rmpRating ? course.rmpRating.toFixed(1) : "-"}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
+
+            {displayedCourses.length > 0 && !isBackendLoading && (
+              <p className="px-1 py-4 text-xs text-muted-foreground">
+                Displaying all {displayedCourses.length} matching section{displayedCourses.length === 1 ? "" : "s"}
+              </p>
+            )}
           </div>
-        </div>
+        </section>
+
+        <aside className="min-w-0 bg-[#fcfdff] px-5 py-6 sm:px-7 lg:px-8" aria-label="Selected course details">
+          {selectedCourse ? (
+            <div className="mx-auto flex h-full w-full max-w-[520px] flex-col">
+              <div>
+                <p className="text-sm font-semibold text-primary">
+                  {formatSectionCode(selectedCourse, displayedCourses.indexOf(selectedCourse))}
+                </p>
+                <h1 className="mt-1 text-2xl font-semibold tracking-[-0.025em] text-foreground">
+                  {getCourseTitle(selectedCourse.name)}
+                </h1>
+              </div>
+
+              <dl className="mt-6 space-y-3.5 border-b border-border pb-6 text-sm">
+                <DetailRow icon={UserRound} label="Instructor" value={selectedCourse.instructor} />
+                <DetailRow icon={Clock3} label="Time" value={formatCourseScheduleDisplay(selectedCourse)} />
+                <DetailRow icon={MapPin} label="Location" value={formatCourseLocations(selectedCourse)} />
+                <DetailRow icon={UsersRound} label="Enrollment" value="Not listed" />
+              </dl>
+
+              <section className="border-b border-border py-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">Rate My Professor</h2>
+                    {selectedCourse.rmpRating ? (
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                        <span className="rounded bg-emerald-600 px-2 py-1 font-semibold text-white">
+                          {selectedCourse.rmpRating.toFixed(1)}
+                        </span>
+                        <span className="font-medium text-emerald-700">
+                          {ratingLabel(selectedCourse.rmpRating)}
+                        </span>
+                        {selectedCourse.rmpTakeAgain !== undefined && (
+                          <span className="text-muted-foreground">· {Math.round(selectedCourse.rmpTakeAgain)}% would take again</span>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm text-muted-foreground">No professor rating available.</p>
+                    )}
+                  </div>
+                  <a
+                    href={getProfessorProfileUrl(selectedCourse.rmpProfileUrl, selectedCourse.instructor)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label="Open Rate My Professors"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </div>
+              </section>
+
+              <section className="border-b border-border py-5">
+                <SectionPicker
+                  label="Discussion"
+                  optional
+                  sections={availableDiscussionSections}
+                  totalCount={selectedCourse.discussionSections?.length ?? 0}
+                  selectedId={selectedDiscussion?.id}
+                  onChange={(sectionId) => setSelectedDiscussionForCourse(selectedCourse.id, sectionId)}
+                />
+                {selectedCourse.labSections && selectedCourse.labSections.length > 0 && (
+                  <div className="mt-4">
+                    <SectionPicker
+                      label="Lab"
+                      optional
+                      sections={availableLabSections}
+                      totalCount={selectedCourse.labSections.length}
+                      selectedId={selectedLab?.id}
+                      onChange={(sectionId) => setSelectedLabForCourse(selectedCourse.id, sectionId)}
+                    />
+                  </div>
+                )}
+              </section>
+
+              <section className="py-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                    <h2 className="text-sm font-semibold text-foreground">Weekly schedule preview</h2>
+                  </div>
+                  <span
+                    className={cn(
+                      "text-xs font-medium",
+                      conflictingScheduledEvents.length > 0 ? "text-rose-700" : "text-emerald-700"
+                    )}
+                  >
+                    {conflictingScheduledEvents.length > 0
+                      ? `${conflictingScheduledEvents.length} ${conflictingScheduledEvents.length === 1 ? "conflict" : "conflicts"}`
+                      : "No conflicts"}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">Current schedule + this selection</p>
+                {conflictingScheduledEvents.length > 0 && (
+                  <div className="mt-3 flex gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs leading-5 text-rose-800">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <p>{formatConflictMessage(conflictingScheduledEvents)}</p>
+                  </div>
+                )}
+                <CourseSchedulePreview
+                  existingEvents={scheduledEvents}
+                  candidateEvents={candidateScheduleEvents}
+                  conflictingCandidateEventIds={conflictingCandidateEventIds}
+                />
+              </section>
+
+              <button
+                type="button"
+                disabled={
+                  addedCourseIds.has(selectedCourse.id) ||
+                  conflictingScheduledEvents.length > 0 ||
+                  candidateScheduleEvents.length === 0
+                }
+                onClick={() =>
+                  handleAddToCalendar(
+                    selectedCourse,
+                    selectedDiscussion,
+                    selectedLab
+                  )
+                }
+                className="mt-auto h-12 w-full rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+              >
+                {addedCourseIds.has(selectedCourse.id)
+                  ? "Added to schedule"
+                  : conflictingScheduledEvents.length > 0
+                    ? "Resolve schedule conflict"
+                    : "Add section"}
+              </button>
+            </div>
+          ) : (
+            <div className="mx-auto flex min-h-[420px] max-w-sm flex-col items-center justify-center text-center">
+              <CalendarDays className="h-6 w-6 text-muted-foreground" />
+              <h2 className="mt-4 text-base font-semibold text-foreground">Select a course section</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Course details and a weekly preview will appear here.
+              </p>
+            </div>
+          )}
+        </aside>
       </div>
     </div>
   );
+}
+
+function SearchState({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="flex min-h-44 flex-col items-center justify-center px-6 text-center">
+      <Search className="h-5 w-5 text-muted-foreground" />
+      <p className="mt-3 text-sm font-semibold text-foreground">{title}</p>
+      <p className="mt-1 max-w-sm text-sm leading-6 text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+
+function DetailRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof UserRound;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="grid grid-cols-[20px_96px_minmax(0,1fr)] items-start gap-3">
+      <Icon className="mt-0.5 h-4 w-4 text-muted-foreground" />
+      <dt className="font-medium text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 text-foreground/80">{value}</dd>
+    </div>
+  );
+}
+
+function SectionPicker({
+  label,
+  optional,
+  sections,
+  totalCount = sections?.length ?? 0,
+  selectedId,
+  onChange,
+}: {
+  label: string;
+  optional?: boolean;
+  sections?: DiscussionSection[];
+  totalCount?: number;
+  selectedId?: string;
+  onChange: (sectionId: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const hiddenCount = Math.max(totalCount - (sections?.length ?? 0), 0);
+  const selectedSection = sections?.find((section) => section.id === selectedId) ?? sections?.[0];
+
+  return (
+    <div>
+      <label className="text-sm font-semibold text-foreground" htmlFor={`${label.toLowerCase()}-section`}>
+        {label} {optional && <span className="font-normal text-muted-foreground">(optional)</span>}
+      </label>
+      {sections && sections.length > 0 && selectedSection ? (
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+          <PopoverTrigger asChild>
+            <button
+              id={`${label.toLowerCase()}-section`}
+              type="button"
+              role="combobox"
+              aria-expanded={isOpen}
+              aria-label={`Choose ${label.toLowerCase()} section`}
+              className="mt-2 flex min-h-16 w-full items-center gap-3 rounded-md border border-border bg-white px-3.5 py-2.5 text-left outline-none transition-colors hover:border-slate-300 hover:bg-slate-50/60 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-foreground">{selectedSection.name}</span>
+                <span className="mt-1 flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <Clock3 className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{formatScheduleDisplay(selectedSection.time)}</span>
+                  </span>
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{selectedSection.location}</span>
+                  </span>
+                </span>
+              </span>
+              <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            sideOffset={6}
+            className="w-[var(--radix-popover-trigger-width)] rounded-md border-border bg-white p-1.5 shadow-[0_12px_30px_rgba(15,23,42,0.12)]"
+          >
+            <div role="listbox" aria-label={`${label} sections`} className="max-h-72 space-y-1 overflow-y-auto">
+              {sections.map((section) => {
+                const isSelected = section.id === selectedSection.id;
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      onChange(section.id);
+                      setIsOpen(false);
+                    }}
+                    className={cn(
+                      "flex w-full items-start gap-3 rounded-md px-3 py-2.5 text-left outline-none transition-colors hover:bg-muted focus-visible:bg-muted",
+                      isSelected && "bg-primary/[0.055]"
+                    )}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className={cn("block text-sm font-semibold", isSelected ? "text-primary" : "text-foreground")}>{section.name}</span>
+                      <span className="mt-1 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <Clock3 className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{formatScheduleDisplay(section.time)}</span>
+                        </span>
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{section.location}</span>
+                        </span>
+                      </span>
+                    </span>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+                      {isSelected && <Check className="h-4 w-4 text-primary" />}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </PopoverContent>
+        </Popover>
+      ) : totalCount > 0 ? (
+        <div className="mt-2 flex gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>No conflict-free {label.toLowerCase()} sections are available.</span>
+        </div>
+      ) : (
+        <p className="mt-2 rounded-md border border-border bg-white px-3 py-3 text-sm text-muted-foreground">
+          No {label.toLowerCase()} required
+        </p>
+      )}
+      {hiddenCount > 0 && sections && sections.length > 0 && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          {hiddenCount} conflicting {label.toLowerCase()} section{hiddenCount === 1 ? "" : "s"} hidden
+        </p>
+      )}
+    </div>
+  );
+}
+
+const PREVIEW_DAYS: Weekday[] = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+
+function CourseSchedulePreview({
+  existingEvents,
+  candidateEvents,
+  conflictingCandidateEventIds,
+}: {
+  existingEvents: CalendarEvent[];
+  candidateEvents: CalendarEvent[];
+  conflictingCandidateEventIds: Set<string>;
+}) {
+  const allEvents = [...existingEvents, ...candidateEvents];
+  const { startMinutes, endMinutes, hours } = getPreviewRange(allEvents);
+
+  const items = [
+    ...existingEvents.map((event) => ({
+      event,
+      label: getPreviewLabel(event),
+      tone: "existing",
+      conflicting: hasScheduleConflict(candidateEvents, [event]),
+    })),
+    ...candidateEvents.map((event) => ({
+      event,
+      label: getPreviewLabel(event),
+      tone: event.eventType === "Lecture" ? "lecture" : "section",
+      conflicting: conflictingCandidateEventIds.has(event.id),
+    })),
+  ];
+
+  return (
+    <div className="mt-4 overflow-hidden rounded-md border border-border bg-white">
+      <div className="grid grid-cols-[38px_repeat(5,minmax(0,1fr))] border-b border-border bg-muted/35">
+        <div />
+        {PREVIEW_DAYS.map((day) => (
+          <div key={day} className="border-l border-border px-1 py-2 text-center text-[10px] font-semibold text-muted-foreground">
+            {day}
+          </div>
+        ))}
+      </div>
+      <div className="relative grid h-64 grid-cols-[38px_repeat(5,minmax(0,1fr))]">
+        <div className="relative">
+          {hours.map((hour) => (
+            <span
+              key={hour}
+              className="absolute right-1.5 -translate-y-1/2 text-[9px] font-medium text-muted-foreground"
+              style={{ top: `${((hour * 60 - startMinutes) / (endMinutes - startMinutes)) * 100}%` }}
+            >
+              {hour > 12 ? `${hour - 12} PM` : hour === 12 ? "12 PM" : `${hour} AM`}
+            </span>
+          ))}
+        </div>
+        {PREVIEW_DAYS.map((day) => (
+          <div key={day} className="relative border-l border-border">
+            {hours.map((hour) => (
+              <div
+                key={hour}
+                className="absolute inset-x-0 border-t border-border/70"
+                style={{ top: `${((hour * 60 - startMinutes) / (endMinutes - startMinutes)) * 100}%` }}
+              />
+            ))}
+            {items
+              .filter(({ event }) => event.dayOfWeek === day)
+              .map(({ event, label, tone, conflicting }) => (
+                <PreviewBlock
+                  key={event.id}
+                  label={label}
+                  startTime={event.startTime}
+                  endTime={event.endTime}
+                  tone={tone}
+                  conflicting={conflicting}
+                  startMinutes={startMinutes}
+                  endMinutes={endMinutes}
+                />
+              ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PreviewBlock({
+  label,
+  startTime,
+  endTime,
+  tone,
+  conflicting,
+  startMinutes,
+  endMinutes,
+}: {
+  label: string;
+  startTime: string;
+  endTime: string;
+  tone: string;
+  conflicting: boolean;
+  startMinutes: number;
+  endMinutes: number;
+}) {
+  const start = timeToMinutes(startTime);
+  const end = timeToMinutes(endTime);
+  const visibleStart = Math.max(start, startMinutes);
+  const visibleEnd = Math.min(end, endMinutes);
+
+  if (visibleEnd <= visibleStart) {
+    return null;
+  }
+
+  const top = ((visibleStart - startMinutes) / (endMinutes - startMinutes)) * 100;
+  const height = Math.max(((visibleEnd - visibleStart) / (endMinutes - startMinutes)) * 100, 7);
+
+  return (
+    <div
+      className={cn(
+        "absolute z-10 overflow-hidden rounded-[4px] border px-1 py-1 text-[9px] font-semibold leading-tight",
+        conflicting && tone === "existing" && "left-1 right-[51%] border-rose-300 bg-rose-50 text-rose-700",
+        conflicting && tone !== "existing" && "left-[51%] right-1 border-rose-500 bg-rose-100 text-rose-800",
+        !conflicting && "inset-x-1",
+        !conflicting && tone === "lecture" && "border-primary bg-primary text-primary-foreground",
+        !conflicting && tone === "section" && "border-sky-300 bg-sky-50 text-sky-700",
+        !conflicting && tone === "existing" && "border-slate-300 bg-slate-100 text-slate-600"
+      )}
+      style={{ top: `${Math.max(top, 0)}%`, height: `${Math.min(height, 100 - Math.max(top, 0))}%` }}
+      title={`${label}, ${formatClockTime(startTime)}-${formatClockTime(endTime)}${conflicting ? ", conflict" : ""}`}
+    >
+      <span className="block truncate">{label}</span>
+      <span className="mt-0.5 block truncate font-normal opacity-85">{formatClockTime(startTime)}</span>
+    </div>
+  );
+}
+
+function resolveSelectedSection(
+  courseId: string | undefined,
+  selections: Record<string, string>,
+  availableSections: DiscussionSection[]
+): DiscussionSection | undefined {
+  if (!courseId) {
+    return undefined;
+  }
+
+  const selectedId = selections[courseId];
+  return availableSections.find((section) => section.id === selectedId) ?? availableSections[0];
+}
+
+function filterConflictFreeSections(
+  course: Course | null,
+  sections: DiscussionSection[] | undefined,
+  scheduledEvents: CalendarEvent[],
+  eventType: "Discussion" | "Lab"
+): DiscussionSection[] {
+  if (!course || !sections) {
+    return [];
+  }
+
+  const color = generateCalendarColor(course.id);
+  return sections.filter((section) => {
+    const sectionEvents = sectionScheduleToEvents(course, section, eventType, color);
+    return sectionEvents.length > 0 && !hasScheduleConflict(sectionEvents, scheduledEvents);
+  });
+}
+
+function courseScheduleToEvents(course: Course, color: string): CalendarEvent[] {
+  const meetings = course.lectureMeetings?.length
+    ? course.lectureMeetings
+    : [{ id: "primary", name: "Lecture", time: course.schedule, location: course.lectureLocation ?? "TBA" }];
+
+  return meetings.flatMap((meeting) => {
+    const schedule = parseCourseSchedule(meeting.time);
+    if (!schedule || schedule.days.length === 0) {
+      return [];
+    }
+
+    return schedule.days.map((day) => ({
+      id: `${course.id}-lecture-${meeting.id}-${day}`,
+      title: course.name,
+      dayOfWeek: day,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+      color,
+      isCourse: true,
+      courseId: course.id,
+      eventType: "Lecture",
+    }));
+  });
+}
+
+function sectionScheduleToEvents(
+  course: Course,
+  section: DiscussionSection,
+  eventType: "Discussion" | "Lab",
+  color: string
+): CalendarEvent[] {
+  const schedule = parseCourseSchedule(section.time);
+  if (!schedule || schedule.days.length === 0) {
+    return [];
+  }
+
+  return schedule.days.map((day) => ({
+    id: `${course.id}-${section.id}-${day}`,
+    title: `${course.name} (${section.name})`,
+    dayOfWeek: day,
+    startTime: schedule.startTime,
+    endTime: schedule.endTime,
+    color,
+    isCourse: true,
+    courseId: course.id,
+    eventType,
+  }));
+}
+
+function getPreviewLabel(event: CalendarEvent): string {
+  const sectionName = event.title.match(/\(([^)]+)\)/)?.[1];
+  return sectionName ?? getCourseCode(event.title);
+}
+
+function getPreviewRange(events: CalendarEvent[]): {
+  startMinutes: number;
+  endMinutes: number;
+  hours: number[];
+} {
+  if (events.length === 0) {
+    return { startMinutes: 8 * 60, endMinutes: 18 * 60, hours: [9, 11, 13, 15, 17] };
+  }
+
+  const starts = events.map((event) => timeToMinutes(event.startTime));
+  const ends = events.map((event) => timeToMinutes(event.endTime));
+  let startMinutes = Math.max(Math.floor(Math.min(...starts) / 60) * 60 - 60, 0);
+  let endMinutes = Math.min(Math.ceil(Math.max(...ends) / 60) * 60 + 60, 24 * 60);
+
+  if (endMinutes - startMinutes < 6 * 60) {
+    const midpoint = (startMinutes + endMinutes) / 2;
+    startMinutes = Math.max(Math.floor((midpoint - 3 * 60) / 60) * 60, 0);
+    endMinutes = Math.min(startMinutes + 6 * 60, 24 * 60);
+    startMinutes = Math.max(endMinutes - 6 * 60, 0);
+  }
+
+  const firstHour = Math.floor(startMinutes / 60) + 1;
+  const hours: number[] = [];
+  for (let hour = firstHour; hour * 60 < endMinutes; hour += 2) {
+    hours.push(hour);
+  }
+
+  return { startMinutes, endMinutes, hours };
+}
+
+function formatConflictMessage(conflicts: CalendarEvent[]): string {
+  const dayOrder: Weekday[] = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  const uniqueConflicts = Array.from(new Map(conflicts.map((event) => [event.id, event])).values())
+    .sort((first, second) => {
+      const dayDifference = dayOrder.indexOf(first.dayOfWeek) - dayOrder.indexOf(second.dayOfWeek);
+      return dayDifference || timeToMinutes(first.startTime) - timeToMinutes(second.startTime);
+    });
+  const details = uniqueConflicts.slice(0, 2).map((event) =>
+    `${getCourseCode(event.title)} on ${event.dayOfWeek} ${formatClockTime(event.startTime)}-${formatClockTime(event.endTime)}`
+  );
+  const remainingCount = uniqueConflicts.length - details.length;
+  const remaining = remainingCount > 0 ? ` and ${remainingCount} more` : "";
+  return `Conflicts with ${details.join(" and ")}${remaining}.`;
 }
 
 function convertTo24Hour(time: string): string {
@@ -813,24 +1213,112 @@ function toWeekday(value: string): Weekday | null {
 }
 
 function formatScheduleDisplay(schedule: string): string {
-  const trimmedSchedule = schedule.trim();
-  if (!trimmedSchedule || trimmedSchedule.toLowerCase() === "schedule tba") {
+  const parsed = parseCourseSchedule(schedule);
+  if (!parsed || parsed.days.length === 0) {
     return "Days and time TBA";
   }
 
-  const firstSpaceIndex = trimmedSchedule.indexOf(" ");
-  if (firstSpaceIndex === -1) {
-    return `${trimmedSchedule} - Time TBA`;
-  }
-
-  const days = trimmedSchedule.slice(0, firstSpaceIndex).trim();
-  const time = trimmedSchedule.slice(firstSpaceIndex + 1).trim();
-  return `${days} - ${time || "Time TBA"}`;
+  return `${sortWeekdays(parsed.days).join(", ")} - ${formatClockTime(parsed.startTime)}-${formatClockTime(parsed.endTime)}`;
 }
 
-function generateCalendarColor(): string {
-  const hue = Math.floor(Math.random() * 360);
-  return `hsl(${hue} 72% 48%)`;
+function getScheduleParts(schedule: string): { days: string; time: string } {
+  const parsed = parseCourseSchedule(schedule);
+  if (!parsed || parsed.days.length === 0) {
+    return { days: schedule.trim() || "TBA", time: "Time TBA" };
+  }
+
+  return {
+    days: sortWeekdays(parsed.days).join(", "),
+    time: `${formatClockTime(parsed.startTime)}-${formatClockTime(parsed.endTime)}`,
+  };
+}
+
+function getCourseScheduleParts(course: Course): { days: string; time: string } {
+  const schedules = course.lectureMeetings?.length
+    ? course.lectureMeetings.map(({ time }) => getScheduleParts(time))
+    : [getScheduleParts(course.schedule)];
+
+  return {
+    days: schedules.map(({ days }) => days).join(" / "),
+    time: schedules.map(({ time }) => time).join(" / "),
+  };
+}
+
+function formatCourseScheduleDisplay(course: Course): string {
+  const schedules = course.lectureMeetings?.length
+    ? course.lectureMeetings.map(({ time }) => formatScheduleDisplay(time))
+    : [formatScheduleDisplay(course.schedule)];
+  return schedules.join("; ");
+}
+
+function formatCourseLocations(course: Course): string {
+  const locations = course.lectureMeetings?.length
+    ? course.lectureMeetings.map(({ location }) => location).filter(Boolean)
+    : [course.lectureLocation || "TBA"];
+  return Array.from(new Set(locations)).join("; ");
+}
+
+function sortWeekdays(days: Weekday[]): Weekday[] {
+  const order: Weekday[] = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  return order.filter((day) => days.includes(day));
+}
+
+function getCourseCode(name: string): string {
+  const match = name.match(/\b[A-Z]{2,5}\s*\d{1,3}[A-Z]?\b/i);
+  return match?.[0].toUpperCase().replace(/([A-Z])(\d)/, "$1 $2") ?? name;
+}
+
+function getCourseTitle(name: string): string {
+  const code = name.match(/\b[A-Z]{2,5}\s*\d{1,3}[A-Z]?\b/i)?.[0];
+  const title = code ? name.replace(code, "").replace(/^\s*[-:]\s*/, "").trim() : name.trim();
+  return title || getCourseCode(name);
+}
+
+function formatSectionCode(course: Course, index: number): string {
+  if (course.sectionCode) {
+    return course.sectionCode;
+  }
+
+  const code = getCourseCode(course.name);
+  return `${code}-${String(Math.max(index, 0) + 1).padStart(2, "0")}`;
+}
+
+function formatTerm(term: string): string {
+  const match = term.match(/(?:(\d{2})(FA|WI|SP|SU)|(FA|WI|SP|SU)(\d{2}))/i);
+  if (!match) return term;
+  const shortYear = match[1] ?? match[4];
+  const quarter = match[2] ?? match[3];
+  const quarterNames: Record<string, string> = {
+    FA: "Fall",
+    WI: "Winter",
+    SP: "Spring",
+    SU: "Summer",
+  };
+  return `${quarterNames[quarter.toUpperCase()]} 20${shortYear}`;
+}
+
+function ratingLabel(rating: number): string {
+  if (rating >= 4.5) return "Excellent";
+  if (rating >= 4) return "Very good";
+  if (rating >= 3) return "Good";
+  return "Mixed";
+}
+
+function timeToMinutes(value: string): number {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function formatClockTime(value: string): string {
+  const [hours, minutes] = value.split(":").map(Number);
+  const suffix = hours >= 12 ? "PM" : "AM";
+  return `${hours % 12 || 12}:${String(minutes).padStart(2, "0")} ${suffix}`;
+}
+
+function generateCalendarColor(seed: string): string {
+  const palette = ["#2563EB", "#7C3AED", "#059669", "#D97706", "#DC2626", "#0891B2"];
+  const hash = Array.from(seed).reduce((total, character) => total + character.charCodeAt(0), 0);
+  return palette[hash % palette.length];
 }
 
 async function searchBackendCourses(query: string, signal: AbortSignal, term: string): Promise<BackendCourse[]> {
@@ -865,6 +1353,7 @@ type BackendSection = {
 };
 
 type BackendCourse = {
+  id?: string | number;
   Name?: string;
   Term?: string;
   Teacher?: string;
@@ -875,6 +1364,8 @@ type BackendCourse = {
   teacher?: string;
   rating?: string;
   Lecture?: BackendSection | null;
+  Lectures?: BackendSection[];
+  SectionCode?: string;
   lecture?: BackendSection | BackendSection[] | null;
   Discussions?: BackendSection[];
   discussions?: BackendSection[];
@@ -892,6 +1383,7 @@ type BackendRmpRecord = {
   avgRating?: number | string;
   avgDiff?: number | string;
   takeAgainPercent?: number | string;
+  profileUrl?: string;
 };
 
 function mapBackendCourseToCourse(course: BackendCourse, index: number): Course {
@@ -902,6 +1394,11 @@ function mapBackendCourseToCourse(course: BackendCourse, index: number): Course 
   const labs = course.Labs ?? course.labs ?? [];
   const midterms = course.Midterms ?? course.midterms ?? [];
   const finalExam = course.Final ?? course.final ?? null;
+  const lectures = course.Lectures?.length
+    ? course.Lectures
+    : lecture
+      ? [lecture]
+      : [];
   const lectureDays = lecture?.Days?.trim() ?? "";
   const lectureTime = lecture?.Time?.trim() ?? "";
   const lectureSchedule = `${lectureDays} ${lectureTime}`.trim();
@@ -915,12 +1412,20 @@ function mapBackendCourseToCourse(course: BackendCourse, index: number): Course 
   const fallbackRating = Number(course.Rating ?? course.rating ?? "");
 
   return {
-    id: `${name}-${term}-${index}`,
+    id: course.id !== undefined ? String(course.id) : `${name}-${term}-${index}`,
     name,
     instructor: teacher,
     schedule: lectureSchedule || "Schedule TBA",
     description: `Term: ${term}`,
     color: "hsl(210, 70%, 52%)",
+    lectureLocation: lecture?.Location?.trim() || "TBA",
+    lectureMeetings: lectures.map((meeting, meetingIndex) => ({
+      id: `${course.id ?? index}-lecture-${meetingIndex}`,
+      name: `Lecture meeting ${meetingIndex + 1}`,
+      time: `${meeting.Days ?? ""} ${meeting.Time ?? ""}`.trim() || "TBA",
+      location: meeting.Location?.trim() || "TBA",
+    })),
+    sectionCode: course.SectionCode,
     rmpRating:
       Number.isFinite(avgRating) && avgRating > 0
         ? avgRating
@@ -929,6 +1434,7 @@ function mapBackendCourseToCourse(course: BackendCourse, index: number): Course 
           : undefined,
     rmpTakeAgain: Number.isFinite(takeAgain) && takeAgain >= 0 ? takeAgain : undefined,
     rmpAvgDifficulty: Number.isFinite(avgDiff) && avgDiff > 0 ? avgDiff : undefined,
+    rmpProfileUrl: normalizeProfessorProfileUrl(rmp?.profileUrl),
     discussionSections: discussions.map((section, sectionIndex) => ({
       id: `${index}-${sectionIndex}`,
       name: `Discussion ${sectionIndex + 1}`,
@@ -967,8 +1473,4 @@ function mapBackendCourseToCourse(course: BackendCourse, index: number): Course 
           }
         : null,
   };
-}
-
-function formatSectionDetail(section: { time: string; location: string }): string {
-  return `${section.time} • ${section.location}`;
 }

@@ -4,4 +4,5 @@ export type RMP = {
   takeAgainPercent: number,
   name: string,
   nameKey: string,
+  profileUrl?: string,
 }

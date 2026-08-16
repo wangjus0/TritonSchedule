@@ -1,7 +1,7 @@
-import { getActiveTermFromDB } from "../ingestion/getActiveTermFromDB.js";
+import { getActiveTermRow } from "../services/supabaseRepository.js";
 
 export async function getActiveTerm(req: any, res: any) {
-  const currentTerm = await getActiveTermFromDB();
+  const currentTerm = await getActiveTermRow();
 
   if (!currentTerm) {
     return res.status(404).send({ message: "No active term found" });

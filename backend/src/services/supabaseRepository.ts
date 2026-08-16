@@ -1,21 +1,35 @@
 import type { PostgrestError } from "@supabase/supabase-js";
+import { randomUUID } from "node:crypto";
 import type { Course } from "../models/Course.js";
+import type {
+  ClassPlannerCatalogSnapshot,
+  ClassPlannerCourse,
+  ClassPlannerMeeting,
+  ClassPlannerSection,
+} from "../models/ClassPlannerCatalog.js";
 import type { RMP } from "../models/RMP.js";
 import type { Term } from "../models/Term.js";
+import {
+  buildLegacyCourses,
+  buildLegacySections,
+} from "../ingestion/buildClassPlannerCatalog.js";
+import { normalizeTeacherKey } from "../utils/normalizeTeacherKey.js";
 import { connectToDB } from "./connectToDB.js";
 
-type CourseRow = {
-  id: string;
-  name: string;
-  term: string;
-  teacher: string;
-  name_key: string;
-  lecture: unknown | null;
-  labs: unknown[];
-  discussions: unknown[];
-  midterms: unknown[];
-  final: unknown | null;
-  rmp: RMP | null;
+type MeetingRow = ClassPlannerMeeting & {
+  meeting_ordinal: number;
+};
+
+type SectionRow = Omit<ClassPlannerSection, "event_package_ids" | "meetings"> & {
+  id: number;
+  class_planner_section_meetings: MeetingRow[];
+};
+
+type OfferingRow = Omit<ClassPlannerCourse, "sections"> & {
+  id: number;
+  source_key: string;
+  instructors_search: string;
+  class_planner_sections: SectionRow[];
 };
 
 type ProfessorRow = {
@@ -24,6 +38,7 @@ type ProfessorRow = {
   avg_rating: number;
   avg_diff: number;
   take_again_percent: number;
+  profile_url?: string | null;
 };
 
 type TermRow = {
@@ -32,9 +47,36 @@ type TermRow = {
 };
 
 const PAGE_SIZE = 1000;
+const CATALOG_BATCH_SIZE = 250;
+const PROFESSOR_COLUMNS = "name,name_key,avg_rating,avg_diff,take_again_percent,profile_url";
+const LEGACY_PROFESSOR_COLUMNS = "name,name_key,avg_rating,avg_diff,take_again_percent";
 
 function throwIfError(error: PostgrestError | null) {
   if (error) throw error;
+}
+
+function isMissingProfileUrlColumn(error: PostgrestError | null): boolean {
+  if (!error) {
+    return false;
+  }
+
+  return (
+    (error.code === "42703" || error.code === "PGRST204") &&
+    error.message.toLowerCase().includes("profile_url")
+  );
+}
+
+async function selectProfessorRows(
+  execute: (columns: string) => Promise<{ data: unknown; error: PostgrestError | null }>,
+): Promise<ProfessorRow[]> {
+  let result = await execute(PROFESSOR_COLUMNS);
+
+  if (isMissingProfileUrlColumn(result.error)) {
+    result = await execute(LEGACY_PROFESSOR_COLUMNS);
+  }
+
+  throwIfError(result.error);
+  return (result.data ?? []) as ProfessorRow[];
 }
 
 function escapeLike(value: string) {
@@ -46,20 +88,57 @@ function flexibleLikePattern(value: string) {
   return `%${tokens.join("%")}%`;
 }
 
-function toCourseDocument(row: CourseRow): Course & { id: string } {
-  return {
-    id: row.id,
-    Name: row.name,
-    Term: row.term,
-    Teacher: row.teacher,
-    Lecture: row.lecture as Course["Lecture"],
-    Labs: row.labs as Course["Labs"],
-    Discussions: row.discussions as Course["Discussions"],
-    Midterms: row.midterms as Course["Midterms"],
-    Final: row.final as Course["Final"],
-    nameKey: row.name_key,
-    rmp: row.rmp,
+function quotePostgrestValue(value: string) {
+  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+const PRIMARY_INSTRUCTION_TYPES = new Set([
+  "independent study",
+  "lecture",
+  "seminar",
+]);
+
+export function mapOfferingToCourses(
+  row: OfferingRow,
+  ratingsByNameKey: ReadonlyMap<string, RMP> = new Map(),
+): Array<Course & { id: string }> {
+  const classPlannerCourse: ClassPlannerCourse = {
+    ...row,
+    sections: row.class_planner_sections
+      .map((section): ClassPlannerSection => ({
+        ...section,
+        event_package_ids: [],
+        meetings: section.class_planner_section_meetings
+          .slice()
+          .sort((left, right) => left.meeting_ordinal - right.meeting_ordinal),
+      }))
+      .sort((left, right) => left.section_code.localeCompare(right.section_code)),
   };
+  const baseCourse = buildLegacyCourses(row.term_code, [classPlannerCourse])[0]!;
+  const primarySections = classPlannerCourse.sections.filter((section) =>
+    PRIMARY_INSTRUCTION_TYPES.has(section.instruction_type_name.toLowerCase()),
+  );
+  const sectionChoices: Array<ClassPlannerSection | undefined> =
+    primarySections.length > 0 ? primarySections : [undefined];
+
+  return sectionChoices.map((primarySection) => {
+    const lectures = primarySection
+      ? buildLegacySections([primarySection])
+      : [];
+    const teacher = primarySection?.instructors[0] ?? row.instructors[0] ?? "";
+    const nameKey = normalizeTeacherKey(teacher);
+
+    return {
+      ...baseCourse,
+      id: primarySection?.section_ref ?? `${row.term_code}:${row.source_key}`,
+      Teacher: teacher,
+      Lecture: lectures[0] ?? null,
+      Lectures: lectures,
+      SectionCode: primarySection?.section_code ?? row.module_code,
+      nameKey,
+      rmp: ratingsByNameKey.get(nameKey) ?? null,
+    };
+  });
 }
 
 function toRmpDocument(row: ProfessorRow): RMP {
@@ -69,6 +148,7 @@ function toRmpDocument(row: ProfessorRow): RMP {
     takeAgainPercent: Number(row.take_again_percent),
     name: row.name,
     nameKey: row.name_key,
+    profileUrl: row.profile_url ?? undefined,
   };
 }
 
@@ -81,50 +161,199 @@ function toTermDocument(row: TermRow): Term {
 
 export async function searchCourses(course: string, term: string) {
   const supabase = connectToDB();
-  const rows: CourseRow[] = [];
+  const rows: OfferingRow[] = [];
   let offset = 0;
 
   while (true) {
     let query = supabase
-      .from("courses")
-      .select("id,name,term,teacher,name_key,lecture,labs,discussions,midterms,final,rmp")
-      .order("name", { ascending: true })
+      .from("class_planner_course_offerings")
+      .select(`
+        id,
+        source_key,
+        term_code,
+        subject_code,
+        course_code,
+        module_code,
+        module_name,
+        course_title,
+        section_count,
+        open_section_count,
+        open_seat_count,
+        waitlist_available_count,
+        instruction_types,
+        instructors,
+        instructors_search,
+        availability_refresh_pending,
+        is_topic_course,
+        section_family,
+        subject_name,
+        academic_level,
+        matching_section_count,
+        units_display,
+        prerequisites,
+        restrictions,
+        metadata_source,
+        class_planner_sections (
+          id,
+          section_id,
+          section_ref,
+          section_code,
+          instruction_type_name,
+          capacity,
+          enrolled,
+          seats_available,
+          waitlist_capacity,
+          waitlist_enrolled,
+          waitlist_available,
+          status,
+          instructors,
+          class_planner_section_meetings (
+            meeting_ordinal,
+            meeting_kind,
+            day_code,
+            day_name,
+            specific_date,
+            start_minutes,
+            end_minutes,
+            start_time_display,
+            end_time_display,
+            building_code,
+            room_code,
+            building_name,
+            room_name,
+            is_remote,
+            is_tba
+          )
+        )
+      `)
+      .order("module_code", { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1);
 
     if (course.length > 0) {
-      query = query.ilike("name", flexibleLikePattern(course));
+      const pattern = quotePostgrestValue(flexibleLikePattern(course));
+      query = query.or([
+        `module_code.ilike.${pattern}`,
+        `module_name.ilike.${pattern}`,
+        `course_title.ilike.${pattern}`,
+        `instructors_search.ilike.${pattern}`,
+      ].join(","));
     }
 
     if (term.length > 0) {
-      query = query.ilike("term", flexibleLikePattern(term));
+      query = query.eq("term_code", term.toUpperCase());
     }
 
     const { data, error } = await query;
     throwIfError(error);
 
-    const page = (data ?? []) as CourseRow[];
+    const page = (data ?? []) as unknown as OfferingRow[];
     rows.push(...page);
 
     if (page.length < PAGE_SIZE) break;
     offset += PAGE_SIZE;
   }
 
-  return rows.map(toCourseDocument);
+  const courses = rows.flatMap((row) => mapOfferingToCourses(row));
+
+  if (courses.length === 0) {
+    return courses;
+  }
+
+  const nameKeys = Array.from(new Set(
+    courses.map(({ nameKey }) => nameKey).filter(Boolean),
+  ));
+  const ratings = nameKeys.length <= 100
+    ? await searchProfessorRows(nameKeys)
+    : await searchProfessor();
+  const ratingsByNameKey = new Map(
+    ratings.map((rating) => [rating.nameKey, rating]),
+  );
+
+  return courses.map((courseDocument) => ({
+    ...courseDocument,
+    rmp: ratingsByNameKey.get(courseDocument.nameKey) ?? null,
+  }));
 }
 
-export async function replaceCatalog(term: string, courses: Course[], professors: RMP[]) {
-  if (courses.length <= 0) {
-    throw new Error("Refusing to replace catalog with no courses");
+async function searchProfessorRows(nameKeys: string[]) {
+  if (nameKeys.length === 0) {
+    return [];
   }
 
   const supabase = connectToDB();
-  const { error } = await supabase.rpc("replace_catalog", {
-    p_courses: courses,
-    p_professors: professors,
-    p_term: term,
+  const rows = await selectProfessorRows(async (columns) => {
+    const { data, error } = await supabase
+      .from("professor")
+      .select(columns)
+      .in("name_key", nameKeys)
+      .order("name", { ascending: true });
+    return { data, error };
   });
 
-  throwIfError(error);
+  return rows.map(toRmpDocument);
+}
+
+export async function replaceCatalog(
+  term: string,
+  professors: RMP[],
+  catalog: ClassPlannerCatalogSnapshot,
+) {
+  if (catalog.offerings.length <= 0) {
+    throw new Error("Refusing to replace catalog with no offerings");
+  }
+
+  const supabase = connectToDB();
+  const refreshId = randomUUID();
+  const batches = [
+    ["offerings", catalog.offerings],
+    ["sections", catalog.sections],
+    ["meetings", catalog.meetings],
+    ["event_packages", catalog.event_packages],
+    ["package_sections", catalog.package_sections],
+    ["module_routes", catalog.module_routes],
+    ["professors", professors],
+  ] as const;
+  const expectedCounts = Object.fromEntries(
+    batches.map(([kind, items]) => [kind, items.length]),
+  );
+
+  const { error: beginError } = await supabase.rpc(
+    "begin_class_planner_catalog_refresh",
+    {
+      p_expected_counts: expectedCounts,
+      p_refresh_id: refreshId,
+      p_term: term,
+    },
+  );
+  throwIfError(beginError);
+
+  try {
+    for (const [kind, items] of batches) {
+      for (let offset = 0; offset < items.length; offset += CATALOG_BATCH_SIZE) {
+        const { error: stageError } = await supabase.rpc(
+          "stage_class_planner_catalog_batch",
+          {
+            p_item_kind: kind,
+            p_items: items.slice(offset, offset + CATALOG_BATCH_SIZE),
+            p_refresh_id: refreshId,
+          },
+        );
+        throwIfError(stageError);
+      }
+    }
+
+    const { error: finalizeError } = await supabase.rpc(
+      "finalize_class_planner_catalog_refresh",
+      { p_refresh_id: refreshId },
+    );
+    throwIfError(finalizeError);
+  } catch (error) {
+    await supabase.rpc("fail_class_planner_catalog_refresh", {
+      p_error: error instanceof Error ? error.message : "Catalog refresh failed",
+      p_refresh_id: refreshId,
+    });
+    throw error;
+  }
 }
 
 export async function getActiveTermRow() {
@@ -144,29 +373,30 @@ export async function searchProfessor(nameKey?: string) {
   const supabase = connectToDB();
 
   if (nameKey) {
-    const { data, error } = await supabase
-      .from("professor")
-      .select("name,name_key,avg_rating,avg_diff,take_again_percent")
-      .eq("name_key", nameKey)
-      .order("name", { ascending: true });
+    const rows = await selectProfessorRows(async (columns) => {
+      const { data, error } = await supabase
+        .from("professor")
+        .select(columns)
+        .eq("name_key", nameKey)
+        .order("name", { ascending: true });
+      return { data, error };
+    });
 
-    throwIfError(error);
-    return ((data ?? []) as ProfessorRow[]).map(toRmpDocument);
+    return rows.map(toRmpDocument);
   }
 
   const rows: ProfessorRow[] = [];
   let offset = 0;
 
   while (true) {
-    const { data, error } = await supabase
-      .from("professor")
-      .select("name,name_key,avg_rating,avg_diff,take_again_percent")
-      .order("name", { ascending: true })
-      .range(offset, offset + PAGE_SIZE - 1);
-
-    throwIfError(error);
-
-    const page = (data ?? []) as ProfessorRow[];
+    const page = await selectProfessorRows(async (columns) => {
+      const { data, error } = await supabase
+        .from("professor")
+        .select(columns)
+        .order("name", { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1);
+      return { data, error };
+    });
     rows.push(...page);
 
     if (page.length < PAGE_SIZE) break;

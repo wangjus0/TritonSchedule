@@ -74,6 +74,15 @@ describe("auth middleware", () => {
       .expect(401, { Message: "Not Authorized" });
   });
 
+  it("When the public API key is used then machine middleware returns 401", async () => {
+    process.env.API_KEY = "browser-visible-key";
+
+    await request(appWith(requireApiBearer))
+      .get("/protected")
+      .set("Authorization", "Bearer browser-visible-key")
+      .expect(401, { Message: "Not Authorized" });
+  });
+
   it("When auth cookie is missing then user middleware returns 401", async () => {
     await request(appWith(requireUser))
       .get("/protected")
