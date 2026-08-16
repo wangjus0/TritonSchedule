@@ -13,6 +13,7 @@ import {
   buildLegacyCourses,
   buildLegacySections,
 } from "../ingestion/buildClassPlannerCatalog.js";
+import { SUBJECT_CODES } from "../ingestion/subjectCodes.js";
 import { normalizeTeacherKey } from "../utils/normalizeTeacherKey.js";
 import { connectToDB } from "./connectToDB.js";
 
@@ -50,6 +51,7 @@ const PAGE_SIZE = 1000;
 const CATALOG_BATCH_SIZE = 250;
 const PROFESSOR_COLUMNS = "name,name_key,avg_rating,avg_diff,take_again_percent,profile_url";
 const LEGACY_PROFESSOR_COLUMNS = "name,name_key,avg_rating,avg_diff,take_again_percent";
+const NORMALIZED_SUBJECT_CODES = new Set(SUBJECT_CODES.map((subjectCode) => subjectCode.trim()));
 
 function throwIfError(error: PostgrestError | null) {
   if (error) throw error;
@@ -90,6 +92,11 @@ function flexibleLikePattern(value: string) {
 
 function quotePostgrestValue(value: string) {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+export function exactSubjectCodeFromSearch(value: string): string | null {
+  const normalizedValue = value.trim().toUpperCase();
+  return NORMALIZED_SUBJECT_CODES.has(normalizedValue) ? normalizedValue : null;
 }
 
 const PRIMARY_INSTRUCTION_TYPES = new Set([
@@ -230,13 +237,19 @@ export async function searchCourses(course: string, term: string) {
       .range(offset, offset + PAGE_SIZE - 1);
 
     if (course.length > 0) {
-      const pattern = quotePostgrestValue(flexibleLikePattern(course));
-      query = query.or([
-        `module_code.ilike.${pattern}`,
-        `module_name.ilike.${pattern}`,
-        `course_title.ilike.${pattern}`,
-        `instructors_search.ilike.${pattern}`,
-      ].join(","));
+      const subjectCode = exactSubjectCodeFromSearch(course);
+
+      if (subjectCode) {
+        query = query.eq("subject_code", subjectCode);
+      } else {
+        const pattern = quotePostgrestValue(flexibleLikePattern(course));
+        query = query.or([
+          `module_code.ilike.${pattern}`,
+          `module_name.ilike.${pattern}`,
+          `course_title.ilike.${pattern}`,
+          `instructors_search.ilike.${pattern}`,
+        ].join(","));
+      }
     }
 
     if (term.length > 0) {
