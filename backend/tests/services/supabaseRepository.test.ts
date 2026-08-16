@@ -1,5 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
-import { mapOfferingToCourses } from "../../src/services/supabaseRepository.js";
+import {
+  exactSubjectCodeFromSearch,
+  mapOfferingToCourses,
+} from "../../src/services/supabaseRepository.js";
 
 const classMeeting = {
   meeting_ordinal: 0,
@@ -151,5 +154,18 @@ describe("mapOfferingToCourse", () => {
       Teacher: "Grace Hopper",
       SectionCode: "002-000-LE",
     });
+  });
+});
+
+describe("exactSubjectCodeFromSearch", () => {
+  it("recognizes subject-only searches regardless of case or surrounding whitespace", () => {
+    expect(exactSubjectCodeFromSearch("math")).toBe("MATH");
+    expect(exactSubjectCodeFromSearch(" CSE ")).toBe("CSE");
+  });
+
+  it("leaves course numbers and general keywords on the flexible search path", () => {
+    expect(exactSubjectCodeFromSearch("MATH 20C")).toBeNull();
+    expect(exactSubjectCodeFromSearch("mathematics")).toBeNull();
+    expect(exactSubjectCodeFromSearch("smith")).toBeNull();
   });
 });
