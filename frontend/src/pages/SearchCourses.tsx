@@ -140,6 +140,7 @@ export default function SearchCourses() {
   });
   const [activeTerm, setActiveTerm] = useState<string>("");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false);
   const [selectedDiscussionIds, setSelectedDiscussionIds] = useState<Record<string, string>>({});
   const [selectedLabIds, setSelectedLabIds] = useState<Record<string, string>>({});
   const [lastFetchedQuery, setLastFetchedQuery] = useState(() => {
@@ -440,13 +441,19 @@ export default function SearchCourses() {
                 aria-label="Search courses"
                 placeholder="Course, instructor, or keyword"
                 value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setIsMobileDetailsOpen(false);
+                }}
                 className="h-14 rounded-lg border-border bg-white pl-12 pr-12 text-base shadow-none placeholder:text-muted-foreground/80 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15"
               />
               {searchQuery && (
                 <button
                   type="button"
-                  onClick={() => setSearchQuery("")}
+                  onClick={() => {
+                    setSearchQuery("");
+                    setIsMobileDetailsOpen(false);
+                  }}
                   className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   aria-label="Clear search"
                 >
@@ -505,7 +512,10 @@ export default function SearchCourses() {
                       <button
                         key={course.id}
                         type="button"
-                        onClick={() => setSelectedCourseId(course.id)}
+                        onClick={() => {
+                          setSelectedCourseId(course.id);
+                          setIsMobileDetailsOpen(true);
+                        }}
                         className={cn(
                           "relative grid w-full gap-2 px-5 py-4 text-left transition-colors hover:bg-muted/55 md:grid-cols-[1.05fr_.8fr_1.2fr_.85fr_.55fr] md:items-center md:gap-4",
                           isSelected && "bg-primary/[0.055] before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-primary"
@@ -514,9 +524,14 @@ export default function SearchCourses() {
                       >
                         <span className="min-w-0">
                           <span className="block truncate text-sm font-semibold text-foreground">
-                            {formatSectionCode(course, index)}
+                            {getCourseCode(course.name)}
                           </span>
-                          <span className="mt-0.5 block text-xs text-muted-foreground">Lecture</span>
+                          <span className="mt-0.5 block truncate text-xs text-foreground/70">
+                            {getCourseTitle(course.name)}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
+                            {formatSectionCode(course, index)} · Lecture
+                          </span>
                         </span>
                         <span className="truncate text-sm text-foreground/80">{course.instructor}</span>
                         <span className="text-sm text-foreground/80">
@@ -537,11 +552,27 @@ export default function SearchCourses() {
           </div>
         </section>
 
-        <aside className="min-w-0 bg-[#fcfdff] px-5 py-6 sm:px-7 lg:px-8" aria-label="Selected course details">
+        <aside
+          className={cn(
+            "min-w-0 bg-[#fcfdff] px-5 py-6 sm:px-7 lg:px-8",
+            isMobileDetailsOpen
+              ? "fixed inset-x-0 bottom-0 top-16 z-40 overflow-y-auto xl:static xl:z-auto xl:block xl:overflow-visible"
+              : "hidden xl:block"
+          )}
+          aria-label="Selected course details"
+        >
           {selectedCourse ? (
-            <div className="mx-auto flex h-full w-full max-w-[520px] flex-col">
+            <div className="relative mx-auto flex min-h-full w-full max-w-[520px] flex-col xl:h-full xl:min-h-0">
+              <button
+                type="button"
+                onClick={() => setIsMobileDetailsOpen(false)}
+                className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground xl:hidden"
+                aria-label="Close course details"
+              >
+                <X className="h-5 w-5" />
+              </button>
               <div>
-                <p className="text-sm font-semibold text-primary">
+                <p className="pr-12 text-sm font-semibold text-primary">
                   {formatSectionCode(selectedCourse, displayedCourses.indexOf(selectedCourse))}
                 </p>
                 <h1 className="mt-1 text-2xl font-semibold tracking-[-0.025em] text-foreground">
@@ -642,28 +673,30 @@ export default function SearchCourses() {
                 />
               </section>
 
-              <button
-                type="button"
-                disabled={
-                  addedCourseIds.has(selectedCourse.id) ||
-                  conflictingScheduledEvents.length > 0 ||
-                  candidateScheduleEvents.length === 0
-                }
-                onClick={() =>
-                  handleAddToCalendar(
-                    selectedCourse,
-                    selectedDiscussion,
-                    selectedLab
-                  )
-                }
-                className="mt-auto h-12 w-full rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
-              >
-                {addedCourseIds.has(selectedCourse.id)
-                  ? "Added to schedule"
-                  : conflictingScheduledEvents.length > 0
-                    ? "Resolve schedule conflict"
-                    : "Add section"}
-              </button>
+              <div className="sticky bottom-0 mt-auto -mx-5 border-t border-border bg-[#fcfdff] px-5 pb-6 pt-4 sm:-mx-7 sm:px-7 lg:-mx-8 lg:px-8 xl:static xl:mx-0 xl:border-0 xl:bg-transparent xl:px-0 xl:pb-0 xl:pt-0">
+                <button
+                  type="button"
+                  disabled={
+                    addedCourseIds.has(selectedCourse.id) ||
+                    conflictingScheduledEvents.length > 0 ||
+                    candidateScheduleEvents.length === 0
+                  }
+                  onClick={() =>
+                    handleAddToCalendar(
+                      selectedCourse,
+                      selectedDiscussion,
+                      selectedLab
+                    )
+                  }
+                  className="h-12 w-full rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+                >
+                  {addedCourseIds.has(selectedCourse.id)
+                    ? "Added to schedule"
+                    : conflictingScheduledEvents.length > 0
+                      ? "Resolve schedule conflict"
+                      : "Add section"}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="mx-auto flex min-h-[420px] max-w-sm flex-col items-center justify-center text-center">
