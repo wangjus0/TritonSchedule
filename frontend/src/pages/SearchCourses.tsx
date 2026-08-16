@@ -107,7 +107,7 @@ function createApiRequestInit(signal: AbortSignal): RequestInit {
 }
 
 export default function SearchCourses() {
-  const SEARCH_RESULTS_CACHE_KEY = "searchCourseResultsCache";
+  const SEARCH_RESULTS_CACHE_KEY = "searchCourseResultsCache:v2";
   const [searchQuery, setSearchQuery] = useState(() =>
     sessionStorage.getItem("searchCoursesQuery") ?? ""
   );
