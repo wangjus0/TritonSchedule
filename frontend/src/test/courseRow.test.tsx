@@ -10,10 +10,9 @@ const mockCourse: Course = {
   description: "Introduction to programming",
   color: "#ff0000",
   discussionSections: [
-    { id: "D1", section: "A", time: "MWF 10am", location: "Room 101" },
-    { id: "D2", section: "B", time: "MWF 11am", location: "Room 102" },
+    { id: "D1", name: "A", time: "MWF 10am", location: "Room 101" },
+    { id: "D2", name: "B", time: "MWF 11am", location: "Room 102" },
   ],
-  examSections: [],
   rmpRating: 4.5,
   rmpTakeAgain: 80,
   rmpAvgDifficulty: 3.0,
@@ -133,8 +132,8 @@ describe("CourseRow", () => {
       instructor: "Dr. Johnson",
       description: "Advanced data structures",
       color: "#00ff00",
+      schedule: "",
       discussionSections: [],
-      examSections: [],
     };
 
     render(
@@ -156,8 +155,8 @@ describe("CourseRow", () => {
       instructor: "Dr. Williams",
       description: "Algorithm design and analysis",
       color: "#0000ff",
+      schedule: "",
       discussionSections: [],
-      examSections: [],
     };
 
     render(

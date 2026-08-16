@@ -78,9 +78,12 @@ describe("resolveTssBookingUrl", () => {
     expect(resolveTssBookingUrl(course)).toBeUndefined();
   });
 
-  it.each([undefined, []])(
+  it.each([
+    { eventPackageIds: undefined },
+    { eventPackageIds: [] },
+  ])(
     "requires package membership metadata from the selected section",
-    (eventPackageIds) => {
+    ({ eventPackageIds }) => {
       expect(resolveTssBookingUrl(course, {
         ...discussion,
         eventPackageIds,

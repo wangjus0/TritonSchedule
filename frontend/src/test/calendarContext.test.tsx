@@ -51,7 +51,7 @@ describe("CalendarContext", () => {
     const newEvent = {
       id: "2",
       title: "New Event",
-      dayOfWeek: "Tuesday",
+      dayOfWeek: "Tue" as const,
       startTime: "10:00",
       endTime: "11:00",
       color: "#00ff00",
@@ -75,7 +75,7 @@ describe("CalendarContext", () => {
     const event = {
       id: "3",
       title: "Original Title",
-      dayOfWeek: "Wednesday",
+      dayOfWeek: "Wed" as const,
       startTime: "11:00",
       endTime: "12:00",
       color: "#0000ff",
@@ -101,7 +101,7 @@ describe("CalendarContext", () => {
     const event = {
       id: "4",
       title: "To Delete",
-      dayOfWeek: "Thursday",
+      dayOfWeek: "Thu" as const,
       startTime: "13:00",
       endTime: "14:00",
       color: "#ffff00",
@@ -130,7 +130,7 @@ describe("CalendarContext", () => {
       result.current.addEvent({
         id: "5",
         title: "Event 1",
-        dayOfWeek: "Friday",
+        dayOfWeek: "Fri",
         startTime: "14:00",
         endTime: "15:00",
         color: "#ff00ff",
@@ -139,7 +139,7 @@ describe("CalendarContext", () => {
       result.current.addEvent({
         id: "6",
         title: "Event 2",
-        dayOfWeek: "Friday",
+        dayOfWeek: "Fri",
         startTime: "15:00",
         endTime: "16:00",
         color: "#00ffff",
