@@ -551,15 +551,15 @@ export default function SearchCourses() {
 
         <aside
           className={cn(
-            "min-w-0 bg-[#fcfdff] px-5 py-6 sm:px-7 lg:px-8",
+            "min-w-0 overflow-hidden bg-[#fcfdff] px-5 py-6 sm:px-7 lg:px-8",
             isMobileDetailsOpen
-              ? "fixed inset-x-0 bottom-0 top-16 z-40 overflow-y-auto xl:sticky xl:top-16 xl:z-auto xl:block xl:h-[calc(100vh-4rem)] xl:self-start"
-              : "hidden xl:sticky xl:top-16 xl:block xl:h-[calc(100vh-4rem)] xl:self-start xl:overflow-y-auto"
+              ? "fixed inset-x-0 bottom-0 top-16 z-40 xl:sticky xl:top-16 xl:z-auto xl:block xl:h-[calc(100vh-4rem)] xl:self-start"
+              : "hidden xl:sticky xl:top-16 xl:block xl:h-[calc(100vh-4rem)] xl:self-start"
           )}
           aria-label="Selected course details"
         >
           {selectedCourse ? (
-            <div className="relative mx-auto flex min-h-full w-full max-w-[520px] flex-col xl:h-full xl:min-h-0">
+            <div className="relative mx-auto flex h-full min-h-0 w-full max-w-[520px] flex-col">
               <button
                 type="button"
                 onClick={() => setIsMobileDetailsOpen(false)}
@@ -568,109 +568,111 @@ export default function SearchCourses() {
               >
                 <X className="h-5 w-5" />
               </button>
-              <div>
-                <p className="pr-12 text-sm font-semibold text-primary">
-                  {getCourseCode(selectedCourse.name)}
-                </p>
-                <h1 className="mt-1 text-2xl font-semibold tracking-[-0.025em] text-foreground">
-                  {getCourseTitle(selectedCourse.name)}
-                </h1>
+              <div className="min-h-0 flex-1 overflow-y-auto pb-5">
+                <div>
+                  <p className="pr-12 text-sm font-semibold text-primary">
+                    {getCourseCode(selectedCourse.name)}
+                  </p>
+                  <h1 className="mt-1 text-2xl font-semibold tracking-[-0.025em] text-foreground">
+                    {getCourseTitle(selectedCourse.name)}
+                  </h1>
+                </div>
+
+                <dl className="mt-6 space-y-3.5 border-b border-border pb-6 text-sm">
+                  <DetailRow icon={UserRound} label="Instructor" value={selectedCourse.instructor} />
+                  <DetailRow icon={Clock3} label="Time" value={formatCourseScheduleDisplay(selectedCourse)} />
+                  <DetailRow icon={MapPin} label="Location" value={formatCourseLocations(selectedCourse)} />
+                  <DetailRow icon={UsersRound} label="Enrollment" value="Not listed" />
+                </dl>
+
+                <section className="border-b border-border py-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h2 className="text-sm font-semibold text-foreground">Rate My Professor</h2>
+                      {selectedCourse.rmpRating ? (
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                          <span className="rounded bg-emerald-600 px-2 py-1 font-semibold text-white">
+                            {selectedCourse.rmpRating.toFixed(1)}
+                          </span>
+                          <span className="font-medium text-emerald-700">
+                            {ratingLabel(selectedCourse.rmpRating)}
+                          </span>
+                          {selectedCourse.rmpTakeAgain !== undefined && (
+                            <span className="text-muted-foreground">· {Math.round(selectedCourse.rmpTakeAgain)}% would take again</span>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-sm text-muted-foreground">No professor rating available.</p>
+                      )}
+                    </div>
+                    <a
+                      href={getProfessorProfileUrl(selectedCourse.rmpProfileUrl, selectedCourse.instructor)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      aria-label="Open Rate My Professors"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
+                </section>
+
+                <section className="border-b border-border py-5">
+                  <SectionPicker
+                    label="Discussion"
+                    optional
+                    sections={availableDiscussionSections}
+                    totalCount={selectedCourse.discussionSections?.length ?? 0}
+                    selectedId={selectedDiscussion?.id}
+                    onChange={(sectionId) => setSelectedDiscussionForCourse(selectedCourse.id, sectionId)}
+                  />
+                  {selectedCourse.labSections && selectedCourse.labSections.length > 0 && (
+                    <div className="mt-4">
+                      <SectionPicker
+                        label="Lab"
+                        optional
+                        sections={availableLabSections}
+                        totalCount={selectedCourse.labSections.length}
+                        selectedId={selectedLab?.id}
+                        onChange={(sectionId) => setSelectedLabForCourse(selectedCourse.id, sectionId)}
+                      />
+                    </div>
+                  )}
+                </section>
+
+                <section className="py-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                      <h2 className="text-sm font-semibold text-foreground">Weekly schedule preview</h2>
+                    </div>
+                    <span
+                      className={cn(
+                        "text-xs font-medium",
+                        conflictingScheduledEvents.length > 0 ? "text-rose-700" : "text-emerald-700"
+                      )}
+                    >
+                      {conflictingScheduledEvents.length > 0
+                        ? `${conflictingScheduledEvents.length} ${conflictingScheduledEvents.length === 1 ? "conflict" : "conflicts"}`
+                        : "No conflicts"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">Current schedule + this selection</p>
+                  {conflictingScheduledEvents.length > 0 && (
+                    <div className="mt-3 flex gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs leading-5 text-rose-800">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <p>{formatConflictMessage(conflictingScheduledEvents)}</p>
+                    </div>
+                  )}
+                  <CourseSchedulePreview
+                    existingEvents={scheduledEvents}
+                    candidateEvents={candidateScheduleEvents}
+                    conflictingCandidateEventIds={conflictingCandidateEventIds}
+                  />
+                </section>
               </div>
 
-              <dl className="mt-6 space-y-3.5 border-b border-border pb-6 text-sm">
-                <DetailRow icon={UserRound} label="Instructor" value={selectedCourse.instructor} />
-                <DetailRow icon={Clock3} label="Time" value={formatCourseScheduleDisplay(selectedCourse)} />
-                <DetailRow icon={MapPin} label="Location" value={formatCourseLocations(selectedCourse)} />
-                <DetailRow icon={UsersRound} label="Enrollment" value="Not listed" />
-              </dl>
-
-              <section className="border-b border-border py-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-sm font-semibold text-foreground">Rate My Professor</h2>
-                    {selectedCourse.rmpRating ? (
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                        <span className="rounded bg-emerald-600 px-2 py-1 font-semibold text-white">
-                          {selectedCourse.rmpRating.toFixed(1)}
-                        </span>
-                        <span className="font-medium text-emerald-700">
-                          {ratingLabel(selectedCourse.rmpRating)}
-                        </span>
-                        {selectedCourse.rmpTakeAgain !== undefined && (
-                          <span className="text-muted-foreground">· {Math.round(selectedCourse.rmpTakeAgain)}% would take again</span>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="mt-2 text-sm text-muted-foreground">No professor rating available.</p>
-                    )}
-                  </div>
-                  <a
-                    href={getProfessorProfileUrl(selectedCourse.rmpProfileUrl, selectedCourse.instructor)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    aria-label="Open Rate My Professors"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </div>
-              </section>
-
-              <section className="border-b border-border py-5">
-                <SectionPicker
-                  label="Discussion"
-                  optional
-                  sections={availableDiscussionSections}
-                  totalCount={selectedCourse.discussionSections?.length ?? 0}
-                  selectedId={selectedDiscussion?.id}
-                  onChange={(sectionId) => setSelectedDiscussionForCourse(selectedCourse.id, sectionId)}
-                />
-                {selectedCourse.labSections && selectedCourse.labSections.length > 0 && (
-                  <div className="mt-4">
-                    <SectionPicker
-                      label="Lab"
-                      optional
-                      sections={availableLabSections}
-                      totalCount={selectedCourse.labSections.length}
-                      selectedId={selectedLab?.id}
-                      onChange={(sectionId) => setSelectedLabForCourse(selectedCourse.id, sectionId)}
-                    />
-                  </div>
-                )}
-              </section>
-
-              <section className="py-5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                    <h2 className="text-sm font-semibold text-foreground">Weekly schedule preview</h2>
-                  </div>
-                  <span
-                    className={cn(
-                      "text-xs font-medium",
-                      conflictingScheduledEvents.length > 0 ? "text-rose-700" : "text-emerald-700"
-                    )}
-                  >
-                    {conflictingScheduledEvents.length > 0
-                      ? `${conflictingScheduledEvents.length} ${conflictingScheduledEvents.length === 1 ? "conflict" : "conflicts"}`
-                      : "No conflicts"}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">Current schedule + this selection</p>
-                {conflictingScheduledEvents.length > 0 && (
-                  <div className="mt-3 flex gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs leading-5 text-rose-800">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                    <p>{formatConflictMessage(conflictingScheduledEvents)}</p>
-                  </div>
-                )}
-                <CourseSchedulePreview
-                  existingEvents={scheduledEvents}
-                  candidateEvents={candidateScheduleEvents}
-                  conflictingCandidateEventIds={conflictingCandidateEventIds}
-                />
-              </section>
-
-              <div className="sticky bottom-0 mt-auto -mx-5 border-t border-border bg-[#fcfdff] px-5 pb-6 pt-4 sm:-mx-7 sm:px-7 lg:-mx-8 lg:px-8 xl:mx-0 xl:px-0 xl:pb-0">
+              <div className="-mx-5 shrink-0 border-t border-border bg-[#fcfdff] px-5 pb-6 pt-4 sm:-mx-7 sm:px-7 lg:-mx-8 lg:px-8 xl:mx-0 xl:px-0 xl:pb-0">
                 <button
                   type="button"
                   disabled={
