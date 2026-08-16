@@ -32,6 +32,19 @@ const DAY_ORDER: Readonly<Record<string, number>> = {
   U: 7,
 };
 
+const PRIMARY_INSTRUCTION_TYPES = new Set([
+  "in",
+  "independent study",
+  "le",
+  "lecture",
+  "se",
+  "seminar",
+]);
+
+export function isPrimaryInstructionType(value: string): boolean {
+  return PRIMARY_INSTRUCTION_TYPES.has(value.trim().toLowerCase());
+}
+
 export function classPlannerSourceKey(course: ClassPlannerCourse): string {
   const sectionIds = course.sections
     .map(({ section_id }) => section_id)
@@ -183,9 +196,7 @@ export function buildLegacyCourses(
 ): Course[] {
   return courses.map((course) => {
     const primarySections = course.sections.filter(({ instruction_type_name }) =>
-      ["lecture", "independent study", "seminar"].includes(
-        instruction_type_name.toLowerCase(),
-      ),
+      isPrimaryInstructionType(instruction_type_name),
     );
     const discussions = course.sections.filter(({ instruction_type_name }) =>
       instruction_type_name.toLowerCase().includes("discussion"),

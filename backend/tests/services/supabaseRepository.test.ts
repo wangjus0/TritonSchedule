@@ -97,8 +97,8 @@ describe("mapOfferingToCourse", () => {
           id: 9003,
           section_id: "E 00000003",
           section_ref: "FA26:E 00000003",
-          section_code: "002-000-LE",
-          instruction_type_name: "lecture",
+          section_code: "002-000-SE",
+          instruction_type_name: "se",
           capacity: 100,
           enrolled: 80,
           seats_available: 20,
@@ -188,7 +188,11 @@ describe("mapOfferingToCourse", () => {
     expect(result[1]).toMatchObject({
       id: "FA26:E 00000003",
       Teacher: "Grace Hopper",
-      SectionCode: "002-000-LE",
+      SectionCode: "002-000-SE",
+      Lecture: {
+        SectionRef: "FA26:E 00000003",
+        EventPackageIds: ["156500"],
+      },
       TssPackageUrls: {
         "156500": "https://tss.ucsd.edu/fiori#package-156500",
       },

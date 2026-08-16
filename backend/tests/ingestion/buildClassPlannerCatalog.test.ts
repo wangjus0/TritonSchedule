@@ -93,4 +93,21 @@ describe("buildLegacyCourses", () => {
       nameKey: "ada lovelace",
     });
   });
+
+  it("treats abbreviated seminar sections as primary sections", () => {
+    const seminar = classPlannerCourse(101, {
+      sections: [{
+        ...classPlannerCourse(101).sections[0]!,
+        instruction_type_name: "se",
+        section_code: "001-000-SE",
+      }],
+    });
+
+    const [result] = buildLegacyCourses("FA26", [seminar]);
+
+    expect(result?.Lecture).toMatchObject({
+      SectionCode: "001-000-SE",
+      EventPackageIds: ["1500000101"],
+    });
+  });
 });

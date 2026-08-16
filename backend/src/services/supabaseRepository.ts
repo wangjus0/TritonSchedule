@@ -12,6 +12,7 @@ import type { Term } from "../models/Term.js";
 import {
   buildLegacyCourses,
   buildLegacySections,
+  isPrimaryInstructionType,
 } from "../ingestion/buildClassPlannerCatalog.js";
 import { SUBJECT_CODES } from "../ingestion/subjectCodes.js";
 import { normalizeTeacherKey } from "../utils/normalizeTeacherKey.js";
@@ -111,12 +112,6 @@ export function exactSubjectCodeFromSearch(value: string): string | null {
   return NORMALIZED_SUBJECT_CODES.has(normalizedValue) ? normalizedValue : null;
 }
 
-const PRIMARY_INSTRUCTION_TYPES = new Set([
-  "independent study",
-  "lecture",
-  "seminar",
-]);
-
 export function mapOfferingToCourses(
   row: OfferingRow,
   ratingsByNameKey: ReadonlyMap<string, RMP> = new Map(),
@@ -136,7 +131,7 @@ export function mapOfferingToCourses(
   };
   const baseCourse = buildLegacyCourses(row.term_code, [classPlannerCourse])[0]!;
   const primarySections = classPlannerCourse.sections.filter((section) =>
-    PRIMARY_INSTRUCTION_TYPES.has(section.instruction_type_name.toLowerCase()),
+    isPrimaryInstructionType(section.instruction_type_name),
   );
   const sectionChoices: Array<ClassPlannerSection | undefined> =
     primarySections.length > 0 ? primarySections : [undefined];
