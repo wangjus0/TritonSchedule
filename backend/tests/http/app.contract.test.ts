@@ -16,8 +16,8 @@ const authState: AuthState = {
   user: { id: "admin-id" },
 };
 
-const mockGetActiveTermFromDB = jest.fn<() => Promise<any>>();
-const mockIngest = jest.fn<() => Promise<any>>();
+const mockGetActiveTermRow = jest.fn<() => Promise<any>>();
+const mockIngestCatalog = jest.fn<() => Promise<any>>();
 const mockPingDatabase = jest.fn<() => Promise<{ ok: 0 | 1 }>>();
 const mockReplaceCatalog = jest.fn<(...args: any[]) => Promise<void>>();
 const mockSearchCourses = jest.fn<(course: string, term: string) => Promise<any[]>>();
@@ -44,17 +44,14 @@ jest.unstable_mockModule("../../src/services/connectToDB.js", () => ({
 }));
 
 jest.unstable_mockModule("../../src/services/supabaseRepository.js", () => ({
+  getActiveTermRow: mockGetActiveTermRow,
   replaceCatalog: mockReplaceCatalog,
   searchCourses: mockSearchCourses,
   searchProfessor: mockSearchProfessor,
 }));
 
-jest.unstable_mockModule("../../src/ingestion/getActiveTermFromDB.js", () => ({
-  getActiveTermFromDB: mockGetActiveTermFromDB,
-}));
-
-jest.unstable_mockModule("../../src/ingestion/ingest.js", () => ({
-  ingest: mockIngest,
+jest.unstable_mockModule("../../src/ingestion/ingestCatalog.js", () => ({
+  ingestCatalog: mockIngestCatalog,
 }));
 
 const { default: app } = await import("../../src/app.js");
@@ -84,18 +81,26 @@ function expectHealthyHealthResponse(body: any) {
 describe("app HTTP contracts", () => {
   beforeEach(() => {
     resetAuthState();
-    mockGetActiveTermFromDB.mockReset();
-    mockIngest.mockReset();
+    mockGetActiveTermRow.mockReset();
+    mockIngestCatalog.mockReset();
     mockPingDatabase.mockReset();
     mockReplaceCatalog.mockReset();
     mockSearchCourses.mockReset();
     mockSearchProfessor.mockReset();
 
-    mockGetActiveTermFromDB.mockResolvedValue({ IsActive: true, Term: "FA25" });
-    mockIngest.mockResolvedValue({
+    mockGetActiveTermRow.mockResolvedValue({ IsActive: true, Term: "FA25" });
+    mockIngestCatalog.mockResolvedValue({
       courses: [{ Name: "CSE 101", Term: "SP26" }],
       professors: [{ name: "jane doe", nameKey: "jane doe" }],
       term: "SP26",
+      catalog: {
+        offerings: [{}],
+        sections: [{}, {}],
+        meetings: [],
+        event_packages: [{}, {}, {}],
+        package_sections: [],
+        module_routes: [],
+      },
     });
     mockPingDatabase.mockResolvedValue({ ok: 1 });
     mockReplaceCatalog.mockResolvedValue(undefined);
@@ -117,7 +122,7 @@ describe("app HTTP contracts", () => {
   });
 
   it("When no active term exists then the term endpoint returns 404", async () => {
-    mockGetActiveTermFromDB.mockResolvedValue(null);
+    mockGetActiveTermRow.mockResolvedValue(null);
 
     await request(app)
       .get("/term")
@@ -182,6 +187,20 @@ describe("app HTTP contracts", () => {
     await request(app)
       .get("/refresh")
       .set("Authorization", "Bearer test-cron-secret")
-      .expect(200, { message: "Courses updated" });
+      .expect(200, {
+        message: "Courses updated",
+        term: "SP26",
+        counts: {
+          courses: 1,
+          sections: 2,
+          eventPackages: 3,
+        },
+      });
+
+    expect(mockReplaceCatalog).toHaveBeenCalledWith(
+      "SP26",
+      expect.any(Array),
+      expect.any(Object),
+    );
   });
 });
