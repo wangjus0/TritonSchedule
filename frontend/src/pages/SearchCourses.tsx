@@ -478,7 +478,7 @@ export default function SearchCourses() {
             <div className="mt-4 overflow-hidden border-y border-border">
               {displayedCourses.length > 0 && !isBackendLoading && !isDebouncingSearch && (
                 <div className="hidden grid-cols-[1.05fr_.8fr_1.2fr_.85fr_.55fr] gap-4 border-b border-border px-5 py-3 text-xs font-medium text-muted-foreground md:grid">
-                  <span>Section</span>
+                  <span>Class</span>
                   <span>Instructor</span>
                   <span>Meeting</span>
                   <span>Location</span>
@@ -505,7 +505,7 @@ export default function SearchCourses() {
                 />
               ) : (
                 <div className="divide-y divide-border">
-                  {displayedCourses.map((course, index) => {
+                  {displayedCourses.map((course) => {
                     const isSelected = selectedCourse?.id === course.id;
                     const schedule = getCourseScheduleParts(course);
                     return (
@@ -528,9 +528,6 @@ export default function SearchCourses() {
                           </span>
                           <span className="mt-0.5 block truncate text-xs text-foreground/70">
                             {getCourseTitle(course.name)}
-                          </span>
-                          <span className="mt-0.5 block text-xs text-muted-foreground">
-                            {formatSectionCode(course, index)} · Lecture
                           </span>
                         </span>
                         <span className="truncate text-sm text-foreground/80">{course.instructor}</span>
@@ -556,8 +553,8 @@ export default function SearchCourses() {
           className={cn(
             "min-w-0 bg-[#fcfdff] px-5 py-6 sm:px-7 lg:px-8",
             isMobileDetailsOpen
-              ? "fixed inset-x-0 bottom-0 top-16 z-40 overflow-y-auto xl:static xl:z-auto xl:block xl:overflow-visible"
-              : "hidden xl:block"
+              ? "fixed inset-x-0 bottom-0 top-16 z-40 overflow-y-auto xl:sticky xl:top-16 xl:z-auto xl:block xl:h-[calc(100vh-4rem)] xl:self-start"
+              : "hidden xl:sticky xl:top-16 xl:block xl:h-[calc(100vh-4rem)] xl:self-start xl:overflow-y-auto"
           )}
           aria-label="Selected course details"
         >
@@ -573,7 +570,7 @@ export default function SearchCourses() {
               </button>
               <div>
                 <p className="pr-12 text-sm font-semibold text-primary">
-                  {formatSectionCode(selectedCourse, displayedCourses.indexOf(selectedCourse))}
+                  {getCourseCode(selectedCourse.name)}
                 </p>
                 <h1 className="mt-1 text-2xl font-semibold tracking-[-0.025em] text-foreground">
                   {getCourseTitle(selectedCourse.name)}
@@ -673,7 +670,7 @@ export default function SearchCourses() {
                 />
               </section>
 
-              <div className="sticky bottom-0 mt-auto -mx-5 border-t border-border bg-[#fcfdff] px-5 pb-6 pt-4 sm:-mx-7 sm:px-7 lg:-mx-8 lg:px-8 xl:static xl:mx-0 xl:border-0 xl:bg-transparent xl:px-0 xl:pb-0 xl:pt-0">
+              <div className="sticky bottom-0 mt-auto -mx-5 border-t border-border bg-[#fcfdff] px-5 pb-6 pt-4 sm:-mx-7 sm:px-7 lg:-mx-8 lg:px-8 xl:mx-0 xl:px-0 xl:pb-0">
                 <button
                   type="button"
                   disabled={
@@ -1298,15 +1295,6 @@ function getCourseTitle(name: string): string {
   const code = name.match(/\b[A-Z]{2,5}\s*\d{1,3}[A-Z]?\b/i)?.[0];
   const title = code ? name.replace(code, "").replace(/^\s*[-:]\s*/, "").trim() : name.trim();
   return title || getCourseCode(name);
-}
-
-function formatSectionCode(course: Course, index: number): string {
-  if (course.sectionCode) {
-    return course.sectionCode;
-  }
-
-  const code = getCourseCode(course.name);
-  return `${code}-${String(Math.max(index, 0) + 1).padStart(2, "0")}`;
 }
 
 function formatTerm(term: string): string {
