@@ -70,7 +70,7 @@ export default function CalendarPage() {
   );
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[#fcfdff] px-4 py-6 sm:px-7">
+    <div className="min-h-[calc(100vh-72px)] bg-[#fcfdff] px-4 py-6 sm:px-7">
       <div className="mx-auto w-full max-w-[1440px]">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -82,7 +82,7 @@ export default function CalendarPage() {
               {courseCount} {courseCount === 1 ? "course" : "courses"}
             </span>
             <Link
-              to="/"
+              to="/courses"
               className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
             >
               <Plus className="h-4 w-4" />
