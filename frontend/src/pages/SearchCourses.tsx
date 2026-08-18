@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useSearchParams } from "react-router-dom";
 import { Course, CourseExamSection, DiscussionSection } from "@/data/sampleCourses";
 import { useCalendar } from "@/context/CalendarContext";
 import { CalendarEvent, Weekday } from "@/types/calendar";
@@ -108,11 +109,13 @@ function createApiRequestInit(signal: AbortSignal): RequestInit {
 
 export default function SearchCourses() {
   const SEARCH_RESULTS_CACHE_KEY = "searchCourseResultsCache:v2";
+  const [searchParams] = useSearchParams();
+  const initialQuery = searchParams.get("q") ?? sessionStorage.getItem("searchCoursesQuery") ?? "";
   const [searchQuery, setSearchQuery] = useState(() =>
-    sessionStorage.getItem("searchCoursesQuery") ?? ""
+    initialQuery
   );
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(() =>
-    sessionStorage.getItem("searchCoursesQuery") ?? ""
+    initialQuery
   );
   const [coursesFromBackend, setCoursesFromBackend] = useState<Course[]>(() => {
     const stored = sessionStorage.getItem(SEARCH_RESULTS_CACHE_KEY);
@@ -439,10 +442,27 @@ export default function SearchCourses() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-white">
-      <div className="grid min-h-[calc(100vh-4rem)] xl:grid-cols-[minmax(0,1.55fr)_minmax(360px,0.95fr)]">
-        <section className="min-w-0 px-4 py-6 sm:px-7 lg:px-8 xl:border-r xl:border-border">
+    <div className="min-h-[calc(100vh-72px)] bg-white">
+      <div className="grid min-h-[calc(100vh-72px)] xl:grid-cols-[minmax(0,1.55fr)_minmax(390px,0.95fr)]">
+        <section className="min-w-0 px-4 pb-8 pt-9 sm:px-8 xl:border-r xl:border-border">
           <div className="mx-auto w-full max-w-[880px]">
+            <div className="relative mb-6 pr-0 sm:pr-28">
+              <h1 className="text-[42px] font-extrabold leading-none tracking-[-0.05em] text-black sm:text-[52px]">
+                Find your{" "}
+                <span className="inline-block rounded-xl bg-[#eaf2ff] px-2.5 pb-1.5 pt-1">
+                  classes.
+                </span>
+              </h1>
+              <p className="mt-4 text-base text-slate-600 sm:text-lg">
+                Search the catalog and build a conflict-free quarter.
+              </p>
+              <img
+                src="/illustrations/trident-doodle.png"
+                alt=""
+                className="pointer-events-none absolute right-3 top-[-24px] hidden h-28 w-28 select-none object-contain mix-blend-multiply sm:block"
+              />
+            </div>
+
             <div className="relative">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -453,7 +473,7 @@ export default function SearchCourses() {
                   setSearchQuery(event.target.value);
                   setIsMobileDetailsOpen(false);
                 }}
-                className="h-14 rounded-lg border-border bg-white pl-12 pr-12 text-base shadow-none placeholder:text-muted-foreground/80 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15"
+                className="h-16 rounded-lg border-border bg-white pl-12 pr-12 text-base shadow-none placeholder:text-muted-foreground/80 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15"
               />
               {searchQuery && (
                 <button
@@ -485,7 +505,7 @@ export default function SearchCourses() {
 
             <div className="mt-4 overflow-hidden border-y border-border">
               {displayedCourses.length > 0 && !isBackendLoading && !isDebouncingSearch && (
-                <div className="hidden grid-cols-[1.05fr_.8fr_1.2fr_.85fr_.55fr] gap-4 border-b border-border px-5 py-3 text-xs font-medium text-muted-foreground md:grid">
+                <div className="hidden grid-cols-[1.05fr_.8fr_1.2fr_.85fr_.55fr] gap-4 border-b border-border px-5 py-4 text-xs font-medium text-muted-foreground md:grid">
                   <span>Class</span>
                   <span>Instructor</span>
                   <span>Meeting</span>
@@ -525,7 +545,7 @@ export default function SearchCourses() {
                           setIsMobileDetailsOpen(true);
                         }}
                         className={cn(
-                          "relative grid w-full gap-2 px-5 py-4 text-left transition-colors hover:bg-muted/55 md:grid-cols-[1.05fr_.8fr_1.2fr_.85fr_.55fr] md:items-center md:gap-4",
+                          "relative grid min-h-[96px] w-full gap-2 px-5 py-4 text-left transition-colors hover:bg-muted/55 md:grid-cols-[1.05fr_.8fr_1.2fr_.85fr_.55fr] md:items-center md:gap-4",
                           isSelected && "bg-primary/[0.055] before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-primary"
                         )}
                         aria-pressed={isSelected}
@@ -559,10 +579,10 @@ export default function SearchCourses() {
 
         <aside
           className={cn(
-            "min-w-0 overflow-hidden bg-[#fcfdff] px-5 py-6 sm:px-7 lg:px-8",
+            "min-w-0 overflow-hidden bg-[#fefefe] px-5 py-7 sm:px-7 lg:px-8",
             isMobileDetailsOpen
-              ? "fixed inset-x-0 bottom-0 top-16 z-40 xl:sticky xl:top-16 xl:z-auto xl:block xl:h-[calc(100vh-4rem)] xl:self-start"
-              : "hidden xl:sticky xl:top-16 xl:block xl:h-[calc(100vh-4rem)] xl:self-start"
+              ? "fixed inset-x-0 bottom-0 top-[72px] z-40 xl:sticky xl:top-[72px] xl:z-auto xl:block xl:h-[calc(100vh-72px)] xl:self-start"
+              : "hidden xl:sticky xl:top-[72px] xl:block xl:h-[calc(100vh-72px)] xl:self-start"
           )}
           aria-label="Selected course details"
         >
@@ -581,9 +601,9 @@ export default function SearchCourses() {
                   <p className="pr-12 text-sm font-semibold text-primary">
                     {getCourseCode(selectedCourse.name)}
                   </p>
-                  <h1 className="mt-1 text-2xl font-semibold tracking-[-0.025em] text-foreground">
+                  <h2 className="mt-1 text-2xl font-semibold tracking-[-0.025em] text-foreground">
                     {getCourseTitle(selectedCourse.name)}
-                  </h1>
+                  </h2>
                 </div>
 
                 <dl className="mt-6 space-y-3.5 border-b border-border pb-6 text-sm">
@@ -628,7 +648,6 @@ export default function SearchCourses() {
                 <section className="border-b border-border py-5">
                   <SectionPicker
                     label="Discussion"
-                    optional
                     sections={availableDiscussionSections}
                     totalCount={selectedCourse.discussionSections?.length ?? 0}
                     selectedId={selectedDiscussion?.id}
@@ -638,7 +657,6 @@ export default function SearchCourses() {
                     <div className="mt-4">
                       <SectionPicker
                         label="Lab"
-                        optional
                         sections={availableLabSections}
                         totalCount={selectedCourse.labSections.length}
                         selectedId={selectedLab?.id}
@@ -680,7 +698,7 @@ export default function SearchCourses() {
                 </section>
               </div>
 
-              <div className="-mx-5 shrink-0 border-t border-border bg-[#fcfdff] px-5 pb-6 pt-4 sm:-mx-7 sm:px-7 lg:-mx-8 lg:px-8 xl:mx-0 xl:px-0 xl:pb-0">
+              <div className="-mx-5 shrink-0 border-t border-border bg-[#fefefe] px-5 pb-6 pt-4 sm:-mx-7 sm:px-7 lg:-mx-8 lg:px-8 xl:mx-0 xl:px-0 xl:pb-0">
                 <div className="grid gap-2 sm:grid-cols-2">
                   {selectedTssUrl ? (
                     <a
@@ -771,14 +789,12 @@ function DetailRow({
 
 function SectionPicker({
   label,
-  optional,
   sections,
   totalCount = sections?.length ?? 0,
   selectedId,
   onChange,
 }: {
   label: string;
-  optional?: boolean;
   sections?: DiscussionSection[];
   totalCount?: number;
   selectedId?: string;
@@ -791,7 +807,7 @@ function SectionPicker({
   return (
     <div>
       <label className="text-sm font-semibold text-foreground" htmlFor={`${label.toLowerCase()}-section`}>
-        {label} {optional && <span className="font-normal text-muted-foreground">(optional)</span>}
+        {label}
       </label>
       {sections && sections.length > 0 && selectedSection ? (
         <Popover open={isOpen} onOpenChange={setIsOpen}>
