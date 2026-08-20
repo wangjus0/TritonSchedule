@@ -535,7 +535,7 @@ export default function SearchCourses() {
                 <div className="divide-y divide-border">
                   {displayedCourses.map((course) => {
                     const isSelected = selectedCourse?.id === course.id;
-                    const schedule = getCourseScheduleParts(course);
+                    const meetingGroups = getCourseScheduleParts(course);
                     return (
                       <div
                         key={course.id}
@@ -582,18 +582,25 @@ export default function SearchCourses() {
                             <ExternalLink className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
                           </a>
                         </span>
-                        <span className="pointer-events-none relative z-[1] grid grid-rows-[1.75rem_1.25rem] content-center gap-2 text-sm text-foreground/80">
-                          <span className="flex flex-wrap items-center gap-1.5">
-                            {schedule.days.map((day) => (
-                              <span
-                                key={day}
-                                className="rounded-md bg-primary/[0.09] px-2 py-1 font-medium text-primary"
-                              >
-                                {day}
+                        <span className="pointer-events-none relative z-[1] flex flex-col justify-center gap-2 text-sm text-foreground/80">
+                          {meetingGroups.map(({ days, time }, meetingIndex) => (
+                            <span
+                              key={`${days.join("-")}-${time}-${meetingIndex}`}
+                              className="grid grid-rows-[1.75rem_1.25rem] gap-2"
+                            >
+                              <span className="flex flex-wrap items-center gap-1.5">
+                                {days.map((day) => (
+                                  <span
+                                    key={day}
+                                    className="rounded-md bg-primary/[0.09] px-2 py-1 font-medium text-primary"
+                                  >
+                                    {day}
+                                  </span>
+                                ))}
                               </span>
-                            ))}
-                          </span>
-                          <span className="flex items-center">{schedule.time}</span>
+                              <span className="flex items-center">{time}</span>
+                            </span>
+                          ))}
                         </span>
                         <span className="pointer-events-none relative z-[1] truncate text-sm text-foreground/80">
                           {course.lectureLocation || "TBA"}
@@ -1323,38 +1330,22 @@ function formatScheduleDisplay(schedule: string): string {
   return `${sortWeekdays(parsed.days).join(", ")} - ${formatClockTime(parsed.startTime)}-${formatClockTime(parsed.endTime)}`;
 }
 
-function getScheduleParts(schedule: string): { days: string; time: string } {
+function getScheduleParts(schedule: string): { days: string[]; time: string } {
   const parsed = parseCourseSchedule(schedule);
   if (!parsed || parsed.days.length === 0) {
-    return { days: schedule.trim() || "TBA", time: "Time TBA" };
+    return { days: [schedule.trim() || "TBA"], time: "Time TBA" };
   }
 
   return {
-    days: sortWeekdays(parsed.days).join(", "),
+    days: sortWeekdays(parsed.days),
     time: `${formatClockTime(parsed.startTime)}-${formatClockTime(parsed.endTime)}`,
   };
 }
 
-function getCourseScheduleParts(course: Course): { days: string[]; time: string } {
-  const schedules = course.lectureMeetings?.length
+function getCourseScheduleParts(course: Course): Array<{ days: string[]; time: string }> {
+  return course.lectureMeetings?.length
     ? course.lectureMeetings.map(({ time }) => getScheduleParts(time))
     : [getScheduleParts(course.schedule)];
-
-  const days = Array.from(
-    new Set(
-      schedules.flatMap(({ days: scheduleDays }) =>
-        scheduleDays
-          .split(/\s*[,/]\s*/)
-          .map((day) => day.trim())
-          .filter(Boolean)
-      )
-    )
-  );
-
-  return {
-    days: days.length > 0 ? days : ["TBA"],
-    time: schedules.map(({ time }) => time).join(" / "),
-  };
 }
 
 function formatCourseScheduleDisplay(course: Course): string {
