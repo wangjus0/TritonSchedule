@@ -2,7 +2,6 @@ import {
   buildClassPlannerCatalog,
   buildLegacyCourses,
 } from "./buildClassPlannerCatalog.js";
-import { enrichCoursesWithRatings } from "./enrichCoursesWithRatings.js";
 import { scrapeClassPlanner } from "./scrapeClassPlanner.js";
 import type { ClassPlannerIngestResult } from "../models/ClassPlannerCatalog.js";
 
@@ -16,12 +15,10 @@ export type IngestResult = ClassPlannerIngestResult;
  */
 export type IngestCatalogDependencies = Readonly<{
   scrapeClassPlanner: typeof scrapeClassPlanner;
-  enrichCoursesWithRatings: typeof enrichCoursesWithRatings;
 }>;
 
 const productionDependencies: IngestCatalogDependencies = {
   scrapeClassPlanner,
-  enrichCoursesWithRatings,
 };
 
 /**
@@ -36,7 +33,6 @@ export async function ingestCatalog(
 ): Promise<IngestResult> {
   const scraped = await dependencies.scrapeClassPlanner(requestedTerm);
   const courses = buildLegacyCourses(scraped.term, scraped.courses);
-  const enrichment = await dependencies.enrichCoursesWithRatings(courses);
   const catalog = buildClassPlannerCatalog(
     scraped.term,
     scraped.courses,
@@ -45,8 +41,7 @@ export async function ingestCatalog(
 
   return {
     term: scraped.term,
-    courses: enrichment.courses,
-    professors: enrichment.professors,
+    courses,
     catalog,
   };
 }

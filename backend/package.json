@@ -9,6 +9,7 @@
     "dev": "tsx watch src/server.ts",
     "prebuild": "npm run clean",
     "build": "tsc --project tsconfig.build.json",
+    "ingest": "tsx src/ingestion/runCatalogIngestion.ts",
     "start": "node dist/server.js",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
@@ -22,12 +23,10 @@
   "license": "MIT",
   "type": "module",
   "devDependencies": {
-    "@types/cli-progress": "^3.11.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jest": "^29.5.14",
     "@types/node": "^25.0.3",
-    "@types/puppeteer": "^5.4.7",
     "@types/supertest": "^7.2.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
@@ -41,13 +40,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.0",
-    "cheerio": "^1.2.0",
-    "cli-progress": "^3.12.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "express": "^5.2.1",
-    "express-rate-limit": "^8.5.2",
-    "puppeteer": "^24.32.1",
-    "ratemyprofessor-api": "^1.0.1"
+    "express": "^5.2.1"
   }
 }

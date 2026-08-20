@@ -2,12 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
-  "crons": [
-    {
-      "path": "/api/refresh",
-      "schedule": "0 3 * * *"
-    }
-  ],
   "env": {
     "NODE_ENV": "production"
   }

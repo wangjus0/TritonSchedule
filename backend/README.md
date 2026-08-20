@@ -8,7 +8,7 @@ This package serves the TritonSchedule API and runs the Class Planner catalog an
 backend/
 ├── src/                    # Production TypeScript
 │   ├── controllers/        # HTTP request handlers
-│   ├── ingestion/          # Course and professor data ingestion
+│   ├── ingestion/          # Class Planner and professor ingestion jobs
 │   ├── middleware/         # Express middleware
 │   ├── models/             # Shared domain types
 │   ├── routes/             # Express route definitions
@@ -22,7 +22,7 @@ backend/
 ├── jest.config.cjs         # Test runner configuration
 ├── tsconfig.json           # Editor and full-project type checking
 ├── tsconfig.build.json     # Production-only compiler configuration
-└── vercel.json             # Vercel build and cron configuration
+└── vercel.json             # Vercel build configuration
 ```
 
 `dist/` is generated and must not be committed.
@@ -80,3 +80,6 @@ Use `npm run test:watch` for interactive test development and `npm run clean` to
 
 Vercel uses `src/app.ts` directly as its Express entry point.
 The app is exported separately from `src/server.ts` so serverless deployment does not create a long-lived listener, while local and standalone deployments can still use `npm start`.
+
+The GitHub Actions workflow in `.github/workflows/nightly-ingestion.yml` runs catalog ingestion outside the Vercel request lifecycle.
+Run it manually from GitHub Actions or locally with `npm run ingest -- --professors=auto`.

@@ -32,8 +32,7 @@ describe("replaceCatalog", () => {
 
     await replaceCatalog(
       "FA26",
-      [],
-      catalog as unknown as Parameters<typeof replaceCatalog>[2],
+      catalog as unknown as Parameters<typeof replaceCatalog>[1],
     );
 
     const beginCall = mockRpc.mock.calls.find(

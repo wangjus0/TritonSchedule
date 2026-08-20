@@ -6,7 +6,7 @@ import {
 import { classPlannerCourse } from "./classPlannerFixtures.js";
 
 describe("ingestCatalog", () => {
-  it("builds and enriches one catalog snapshot through injected boundaries", async () => {
+  it("builds one catalog snapshot through the scraper boundary", async () => {
     const course = classPlannerCourse(101, {
       module_name: "Design and Analysis of Algorithms",
     });
@@ -26,16 +26,11 @@ describe("ingestCatalog", () => {
           },
         ],
       }),
-      enrichCoursesWithRatings: async (courses) => ({
-        courses: courses.map((course) => ({ ...course })),
-        professors: [],
-      }),
     };
 
     const result = await ingestCatalog(undefined, dependencies);
 
     expect(result.term).toBe("FA26");
-    expect(result.professors).toEqual([]);
     expect(result.courses).toHaveLength(1);
     expect(result.courses[0]).toMatchObject({
       Name: "CSE 101: Design and Analysis of Algorithms",

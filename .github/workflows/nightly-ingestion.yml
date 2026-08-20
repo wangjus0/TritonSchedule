@@ -1,0 +1,58 @@
+name: Nightly catalog ingestion
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+      timezone: "America/Chicago"
+  workflow_dispatch:
+    inputs:
+      term:
+        description: Optional Class Planner term code
+        required: false
+        type: string
+      professors:
+        description: Professor rating refresh mode
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - always
+          - never
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catalog-ingestion
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    name: Publish catalog
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Ingest catalog
+        working-directory: backend
+        env:
+          INGESTION_TERM: ${{ inputs.term || '' }}
+          PROFESSOR_MODE: ${{ inputs.professors || 'auto' }}
+        run: npm run ingest -- --term="$INGESTION_TERM" --professors="$PROFESSOR_MODE"
