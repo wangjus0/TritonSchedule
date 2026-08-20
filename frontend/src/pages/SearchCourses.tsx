@@ -9,6 +9,7 @@ import {
   Loader2,
   MapPin,
   Search,
+  Star,
   UserRound,
   UsersRound,
   X,
@@ -505,12 +506,11 @@ export default function SearchCourses() {
 
             <div className="mt-4 overflow-hidden border-y border-border">
               {displayedCourses.length > 0 && !isBackendLoading && !isDebouncingSearch && (
-                <div className="hidden grid-cols-[1.05fr_.8fr_1.2fr_.85fr_.55fr] gap-4 border-b border-border px-5 py-4 text-xs font-medium text-muted-foreground md:grid">
+                <div className="hidden grid-cols-[1.25fr_1.15fr_1.15fr_.65fr] gap-5 border-b border-border px-5 py-4 text-xs font-medium text-muted-foreground md:grid">
                   <span>Class</span>
                   <span>Instructor</span>
                   <span>Meeting</span>
                   <span>Location</span>
-                  <span>Rating</span>
                 </div>
               )}
 
@@ -535,39 +535,77 @@ export default function SearchCourses() {
                 <div className="divide-y divide-border">
                   {displayedCourses.map((course) => {
                     const isSelected = selectedCourse?.id === course.id;
-                    const schedule = getCourseScheduleParts(course);
+                    const meetingGroups = getCourseScheduleParts(course);
                     return (
-                      <button
+                      <div
                         key={course.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCourseId(course.id);
-                          setIsMobileDetailsOpen(true);
-                        }}
                         className={cn(
-                          "relative grid min-h-[96px] w-full gap-2 px-5 py-4 text-left transition-colors hover:bg-muted/55 md:grid-cols-[1.05fr_.8fr_1.2fr_.85fr_.55fr] md:items-center md:gap-4",
+                          "group relative grid min-h-[108px] w-full gap-3 px-5 py-5 text-left md:grid-cols-[1.25fr_1.15fr_1.15fr_.65fr] md:items-center md:gap-5",
                           isSelected && "bg-primary/[0.055] before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-primary"
                         )}
-                        aria-pressed={isSelected}
                       >
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-semibold text-foreground">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCourseId(course.id);
+                            setIsMobileDetailsOpen(true);
+                          }}
+                          className="absolute inset-0 z-0 w-full cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30"
+                          aria-label={`Select ${course.name} with ${course.instructor}`}
+                          aria-pressed={isSelected}
+                        />
+                        <span className="pointer-events-none relative z-[1] grid min-w-0 grid-rows-[1.75rem_1.25rem] content-center gap-2">
+                          <span className="flex items-center truncate text-sm font-semibold text-foreground">
                             {getCourseCode(course.name)}
                           </span>
-                          <span className="mt-0.5 block truncate text-xs text-foreground/70">
+                          <span className="flex items-center truncate text-xs text-foreground/70">
                             {getCourseTitle(course.name)}
                           </span>
                         </span>
-                        <span className="truncate text-sm text-foreground/80">{course.instructor}</span>
-                        <span className="text-sm text-foreground/80">
-                          <span className="block">{schedule.days}</span>
-                          <span className="block">{schedule.time}</span>
+                        <span className="pointer-events-none relative z-[1] grid min-w-0 grid-rows-[1.75rem_1.25rem] content-center gap-2 text-sm text-foreground/80">
+                          <span className="flex items-center truncate">{course.instructor}</span>
+                          <a
+                            href={getProfessorProfileUrl(course.rmpProfileUrl, course.instructor)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="pointer-events-auto inline-flex h-5 w-fit items-center gap-1.5 rounded-sm text-xs transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+                            aria-label={`View ${course.instructor} on Rate My Professors`}
+                          >
+                            {course.rmpRating && (
+                              <>
+                                <Star className="h-3.5 w-3.5 fill-emerald-600 text-emerald-600" aria-hidden="true" />
+                                <span>{course.rmpRating.toFixed(1)}</span>
+                                <span className="text-muted-foreground" aria-hidden="true">·</span>
+                              </>
+                            )}
+                            <span className="font-medium text-primary">View on RMP</span>
+                            <ExternalLink className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                          </a>
                         </span>
-                        <span className="truncate text-sm text-foreground/80">{course.lectureLocation || "TBA"}</span>
-                        <span className="text-sm text-foreground/80">
-                          {course.rmpRating ? course.rmpRating.toFixed(1) : "-"}
+                        <span className="pointer-events-none relative z-[1] flex flex-col justify-center gap-2 text-sm text-foreground/80">
+                          {meetingGroups.map(({ days, time }, meetingIndex) => (
+                            <span
+                              key={`${days.join("-")}-${time}-${meetingIndex}`}
+                              className="grid grid-rows-[1.75rem_1.25rem] gap-2"
+                            >
+                              <span className="flex flex-wrap items-center gap-1.5">
+                                {days.map((day) => (
+                                  <span
+                                    key={day}
+                                    className="rounded-md bg-primary/[0.09] px-2 py-1 font-medium text-primary"
+                                  >
+                                    {day}
+                                  </span>
+                                ))}
+                              </span>
+                              <span className="flex items-center">{time}</span>
+                            </span>
+                          ))}
                         </span>
-                      </button>
+                        <span className="pointer-events-none relative z-[1] truncate text-sm text-foreground/80">
+                          {course.lectureLocation || "TBA"}
+                        </span>
+                      </div>
                     );
                   })}
                 </div>
@@ -1292,27 +1330,22 @@ function formatScheduleDisplay(schedule: string): string {
   return `${sortWeekdays(parsed.days).join(", ")} - ${formatClockTime(parsed.startTime)}-${formatClockTime(parsed.endTime)}`;
 }
 
-function getScheduleParts(schedule: string): { days: string; time: string } {
+function getScheduleParts(schedule: string): { days: string[]; time: string } {
   const parsed = parseCourseSchedule(schedule);
   if (!parsed || parsed.days.length === 0) {
-    return { days: schedule.trim() || "TBA", time: "Time TBA" };
+    return { days: [schedule.trim() || "TBA"], time: "Time TBA" };
   }
 
   return {
-    days: sortWeekdays(parsed.days).join(", "),
+    days: sortWeekdays(parsed.days),
     time: `${formatClockTime(parsed.startTime)}-${formatClockTime(parsed.endTime)}`,
   };
 }
 
-function getCourseScheduleParts(course: Course): { days: string; time: string } {
-  const schedules = course.lectureMeetings?.length
+function getCourseScheduleParts(course: Course): Array<{ days: string[]; time: string }> {
+  return course.lectureMeetings?.length
     ? course.lectureMeetings.map(({ time }) => getScheduleParts(time))
     : [getScheduleParts(course.schedule)];
-
-  return {
-    days: schedules.map(({ days }) => days).join(" / "),
-    time: schedules.map(({ time }) => time).join(" / "),
-  };
 }
 
 function formatCourseScheduleDisplay(course: Course): string {
