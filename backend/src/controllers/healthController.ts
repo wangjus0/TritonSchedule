@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { pingDatabase as defaultPingDatabase } from "../services/connectToDB.js";
 
-const REQUIRED_ENV_VARS = ["CRON_SECRET", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"] as const;
+const REQUIRED_ENV_VARS = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"] as const;
 
 /**
  * Check health of the service

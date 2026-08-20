@@ -1,5 +1,4 @@
 import type { Course } from "./Course.js";
-import type { RMP } from "./RMP.js";
 
 export type ClassPlannerTerm = Readonly<{
   term_code: string;
@@ -174,6 +173,5 @@ export type ClassPlannerScrape = Readonly<{
 export type ClassPlannerIngestResult = Readonly<{
   term: string;
   courses: Course[];
-  professors: RMP[];
   catalog: ClassPlannerCatalogSnapshot;
 }>;

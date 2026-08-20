@@ -2,7 +2,6 @@ import {
   buildClassPlannerCatalog,
   buildLegacyCourses,
 } from "./buildClassPlannerCatalog.js";
-import { enrichCoursesWithRatings } from "./enrichCoursesWithRatings.js";
 import { scrapeClassPlanner } from "./scrapeClassPlanner.js";
 import type { ClassPlannerIngestResult } from "../models/ClassPlannerCatalog.js";
 
@@ -16,19 +15,18 @@ export type IngestResult = ClassPlannerIngestResult;
  */
 export type IngestCatalogDependencies = Readonly<{
   scrapeClassPlanner: typeof scrapeClassPlanner;
-  enrichCoursesWithRatings: typeof enrichCoursesWithRatings;
 }>;
 
 const productionDependencies: IngestCatalogDependencies = {
   scrapeClassPlanner,
-  enrichCoursesWithRatings,
 };
 
 /**
  * Runs the full catalog ingestion process.
  *
+ * @param requestedTerm Optional Class Planner term code.
  * @param dependencies Operations used during ingestion.
- * @returns The ingested courses, professors, and term.
+ * @returns The catalog snapshot, legacy courses, and resolved term.
  */
 export async function ingestCatalog(
   requestedTerm?: string,
@@ -36,7 +34,6 @@ export async function ingestCatalog(
 ): Promise<IngestResult> {
   const scraped = await dependencies.scrapeClassPlanner(requestedTerm);
   const courses = buildLegacyCourses(scraped.term, scraped.courses);
-  const enrichment = await dependencies.enrichCoursesWithRatings(courses);
   const catalog = buildClassPlannerCatalog(
     scraped.term,
     scraped.courses,
@@ -45,8 +42,7 @@ export async function ingestCatalog(
 
   return {
     term: scraped.term,
-    courses: enrichment.courses,
-    professors: enrichment.professors,
+    courses,
     catalog,
   };
 }

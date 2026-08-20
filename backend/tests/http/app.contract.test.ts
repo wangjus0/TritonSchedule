@@ -17,9 +17,7 @@ const authState: AuthState = {
 };
 
 const mockGetActiveTermRow = jest.fn<() => Promise<any>>();
-const mockIngestCatalog = jest.fn<() => Promise<any>>();
 const mockPingDatabase = jest.fn<() => Promise<{ ok: 0 | 1 }>>();
-const mockReplaceCatalog = jest.fn<(...args: any[]) => Promise<void>>();
 const mockSearchCourses = jest.fn<(course: string, term: string) => Promise<any[]>>();
 const mockSearchProfessor = jest.fn<(nameKey?: string) => Promise<any[]>>();
 
@@ -45,13 +43,8 @@ jest.unstable_mockModule("../../src/services/connectToDB.js", () => ({
 
 jest.unstable_mockModule("../../src/services/supabaseRepository.js", () => ({
   getActiveTermRow: mockGetActiveTermRow,
-  replaceCatalog: mockReplaceCatalog,
   searchCourses: mockSearchCourses,
   searchProfessor: mockSearchProfessor,
-}));
-
-jest.unstable_mockModule("../../src/ingestion/ingestCatalog.js", () => ({
-  ingestCatalog: mockIngestCatalog,
 }));
 
 const { default: app } = await import("../../src/app.js");
@@ -82,28 +75,12 @@ describe("app HTTP contracts", () => {
   beforeEach(() => {
     resetAuthState();
     mockGetActiveTermRow.mockReset();
-    mockIngestCatalog.mockReset();
     mockPingDatabase.mockReset();
-    mockReplaceCatalog.mockReset();
     mockSearchCourses.mockReset();
     mockSearchProfessor.mockReset();
 
     mockGetActiveTermRow.mockResolvedValue({ IsActive: true, Term: "FA25" });
-    mockIngestCatalog.mockResolvedValue({
-      courses: [{ Name: "CSE 101", Term: "SP26" }],
-      professors: [{ name: "jane doe", nameKey: "jane doe" }],
-      term: "SP26",
-      catalog: {
-        offerings: [{}],
-        sections: [{}, {}],
-        meetings: [],
-        event_packages: [{}, {}, {}],
-        package_sections: [],
-        module_routes: [],
-      },
-    });
     mockPingDatabase.mockResolvedValue({ ok: 1 });
-    mockReplaceCatalog.mockResolvedValue(undefined);
     mockSearchCourses.mockResolvedValue([{ Name: "CSE 101", Term: "FA25" }]);
     mockSearchProfessor.mockResolvedValue([{ name: "jane doe", nameKey: "jane doe" }]);
   });
@@ -183,24 +160,9 @@ describe("app HTTP contracts", () => {
     expect(response.body.checks.database.ok).toBe(false);
   });
 
-  it("When machine bearer requests refresh then catalog update succeeds", async () => {
+  it("When the removed refresh endpoint is requested then it returns 404", async () => {
     await request(app)
       .get("/refresh")
-      .set("Authorization", "Bearer test-cron-secret")
-      .expect(200, {
-        message: "Courses updated",
-        term: "SP26",
-        counts: {
-          courses: 1,
-          sections: 2,
-          eventPackages: 3,
-        },
-      });
-
-    expect(mockReplaceCatalog).toHaveBeenCalledWith(
-      "SP26",
-      expect.any(Array),
-      expect.any(Object),
-    );
+      .expect(404);
   });
 });

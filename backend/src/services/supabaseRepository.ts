@@ -62,6 +62,7 @@ type TermRow = {
 
 const PAGE_SIZE = 1000;
 const CATALOG_BATCH_SIZE = 250;
+const PROFESSOR_BATCH_SIZE = 250;
 const PROFESSOR_COLUMNS = "name,name_key,avg_rating,avg_diff,take_again_percent,profile_url";
 const LEGACY_PROFESSOR_COLUMNS = "name,name_key,avg_rating,avg_diff,take_again_percent";
 const NORMALIZED_SUBJECT_CODES = new Set(SUBJECT_CODES.map((subjectCode) => subjectCode.trim()));
@@ -348,9 +349,9 @@ async function searchProfessorRows(nameKeys: string[]) {
   return rows.map(toRmpDocument);
 }
 
+/** Atomically replaces a non-empty catalog without modifying professor rows. */
 export async function replaceCatalog(
   term: string,
-  professors: RMP[],
   catalog: ClassPlannerCatalogSnapshot,
 ) {
   if (catalog.offerings.length <= 0) {
@@ -366,7 +367,7 @@ export async function replaceCatalog(
     ["event_packages", catalog.event_packages],
     ["package_sections", catalog.package_sections],
     ["module_routes", catalog.module_routes],
-    ["professors", professors],
+    ["professors", []],
   ] as const;
   const expectedCounts = Object.fromEntries(
     batches.map(([kind, items]) => [kind, items.length]),
@@ -409,6 +410,101 @@ export async function replaceCatalog(
     });
     throw error;
   }
+}
+
+/** Upserts successful professor ratings while leaving all other rows unchanged. */
+export async function upsertProfessors(professors: readonly RMP[]) {
+  const supabase = connectToDB();
+
+  for (let offset = 0; offset < professors.length; offset += PROFESSOR_BATCH_SIZE) {
+    const rows = professors
+      .slice(offset, offset + PROFESSOR_BATCH_SIZE)
+      .map((professor) => ({
+        avg_diff: professor.avgDiff,
+        avg_rating: professor.avgRating,
+        name: professor.name,
+        name_key: professor.nameKey,
+        profile_url: professor.profileUrl ?? null,
+        take_again_percent: professor.takeAgainPercent,
+      }));
+    const { error } = await supabase
+      .from("professor")
+      .upsert(rows, { onConflict: "name_key" });
+    throwIfError(error);
+  }
+}
+
+/** Metadata recorded when an ingestion run starts. */
+export type CatalogIngestionRunStart = Readonly<{
+  id: string;
+  trigger: string;
+  requestedTerm?: string;
+  workflowUrl?: string;
+  professorsRequested: boolean;
+}>;
+
+/** Publication and enrichment outcome recorded when an ingestion run finishes. */
+export type CatalogIngestionRunFinish = Readonly<{
+  id: string;
+  resolvedTerm?: string;
+  catalogPublished: boolean;
+  catalogCounts: object;
+  professorCounts: object;
+  warnings: readonly string[];
+}>;
+
+/** Starts an audited run after stale-run cleanup and overlap validation. */
+export async function beginCatalogIngestionRun(input: CatalogIngestionRunStart) {
+  const supabase = connectToDB();
+  const { error } = await supabase.rpc("begin_catalog_ingestion_run", {
+    p_professors_requested: input.professorsRequested,
+    p_requested_term: input.requestedTerm ?? null,
+    p_run_id: input.id,
+    p_trigger: input.trigger,
+    p_workflow_url: input.workflowUrl ?? null,
+  });
+  throwIfError(error);
+}
+
+/** Records a successful audited run, including any warning status. */
+export async function completeCatalogIngestionRun(
+  input: CatalogIngestionRunFinish,
+) {
+  const supabase = connectToDB();
+  const { error } = await supabase.rpc("complete_catalog_ingestion_run", {
+    p_catalog_counts: input.catalogCounts,
+    p_catalog_published: input.catalogPublished,
+    p_professor_counts: input.professorCounts,
+    p_resolved_term: input.resolvedTerm ?? null,
+    p_run_id: input.id,
+    p_warnings: input.warnings,
+  });
+  throwIfError(error);
+}
+
+/** Records a failed audited run without changing its published data. */
+export async function failCatalogIngestionRun(
+  input: CatalogIngestionRunFinish & Readonly<{ error: string }>,
+) {
+  const supabase = connectToDB();
+  const { error } = await supabase.rpc("fail_catalog_ingestion_run", {
+    p_catalog_counts: input.catalogCounts,
+    p_catalog_published: input.catalogPublished,
+    p_error: input.error,
+    p_professor_counts: input.professorCounts,
+    p_resolved_term: input.resolvedTerm ?? null,
+    p_run_id: input.id,
+    p_warnings: input.warnings,
+  });
+  throwIfError(error);
+}
+
+/** Reports whether the latest requested professor phase warned or failed. */
+export async function shouldRetryProfessorRefresh(): Promise<boolean> {
+  const supabase = connectToDB();
+  const { data, error } = await supabase.rpc("should_retry_professor_refresh");
+  throwIfError(error);
+  return data === true;
 }
 
 export async function getActiveTermRow() {
