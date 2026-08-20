@@ -254,6 +254,10 @@ set search_path = ''
 as $$
   select coalesce((
     select status in ('failed', 'succeeded_with_warnings')
+      or (
+        status = 'running'
+        and started_at < now() - interval '4 hours'
+      )
     from private.catalog_ingestion_runs
     where professors_requested
     order by started_at desc
