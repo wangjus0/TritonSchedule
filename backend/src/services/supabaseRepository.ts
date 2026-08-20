@@ -349,6 +349,7 @@ async function searchProfessorRows(nameKeys: string[]) {
   return rows.map(toRmpDocument);
 }
 
+/** Atomically replaces a non-empty catalog without modifying professor rows. */
 export async function replaceCatalog(
   term: string,
   catalog: ClassPlannerCatalogSnapshot,
@@ -411,6 +412,7 @@ export async function replaceCatalog(
   }
 }
 
+/** Upserts successful professor ratings while leaving all other rows unchanged. */
 export async function upsertProfessors(professors: readonly RMP[]) {
   const supabase = connectToDB();
 
@@ -432,6 +434,7 @@ export async function upsertProfessors(professors: readonly RMP[]) {
   }
 }
 
+/** Metadata recorded when an ingestion run starts. */
 export type CatalogIngestionRunStart = Readonly<{
   id: string;
   trigger: string;
@@ -440,6 +443,7 @@ export type CatalogIngestionRunStart = Readonly<{
   professorsRequested: boolean;
 }>;
 
+/** Publication and enrichment outcome recorded when an ingestion run finishes. */
 export type CatalogIngestionRunFinish = Readonly<{
   id: string;
   resolvedTerm?: string;
@@ -449,6 +453,7 @@ export type CatalogIngestionRunFinish = Readonly<{
   warnings: readonly string[];
 }>;
 
+/** Starts an audited run after stale-run cleanup and overlap validation. */
 export async function beginCatalogIngestionRun(input: CatalogIngestionRunStart) {
   const supabase = connectToDB();
   const { error } = await supabase.rpc("begin_catalog_ingestion_run", {
@@ -461,6 +466,7 @@ export async function beginCatalogIngestionRun(input: CatalogIngestionRunStart) 
   throwIfError(error);
 }
 
+/** Records a successful audited run, including any warning status. */
 export async function completeCatalogIngestionRun(
   input: CatalogIngestionRunFinish,
 ) {
@@ -476,6 +482,7 @@ export async function completeCatalogIngestionRun(
   throwIfError(error);
 }
 
+/** Records a failed audited run without changing its published data. */
 export async function failCatalogIngestionRun(
   input: CatalogIngestionRunFinish & Readonly<{ error: string }>,
 ) {
@@ -492,6 +499,7 @@ export async function failCatalogIngestionRun(
   throwIfError(error);
 }
 
+/** Reports whether the latest requested professor phase warned or failed. */
 export async function shouldRetryProfessorRefresh(): Promise<boolean> {
   const supabase = connectToDB();
   const { data, error } = await supabase.rpc("should_retry_professor_refresh");

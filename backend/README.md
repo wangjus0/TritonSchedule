@@ -76,10 +76,37 @@ The build command clears stale output and compiles production code only.
 The start command runs the compiled server from `dist/server.js`.
 Use `npm run test:watch` for interactive test development and `npm run clean` to remove generated build output.
 
+## Catalog ingestion
+
+Apply the Supabase migrations before running ingestion so the atomic catalog refresh and private ingestion audit functions are available.
+The command requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`:
+
+```bash
+npm run ingest -- --term=FA26 --professors=auto
+```
+
+`--term` is optional and otherwise lets Class Planner select its current term.
+`--professors` accepts the following modes and defaults to `auto`:
+
+| Mode | Behavior |
+| --- | --- |
+| `auto` | Refresh ratings on Sunday in `America/Chicago`, or retry after the latest requested professor phase failed or completed with warnings. |
+| `always` | Refresh ratings during this run. |
+| `never` | Publish only the catalog. |
+
+The job stages and atomically publishes a non-empty catalog before requesting professor ratings.
+Professor requests use the Rate My Professors GraphQL API with a 30-second timeout, at most three attempts for network, rate-limit, and server failures, and four concurrent requests.
+Partial professor failures update successful ratings, preserve previously stored ratings for failed requests, emit workflow warnings, and record `succeeded_with_warnings`.
+If the school lookup fails or no professor request succeeds, the command exits unsuccessfully after recording the professor-phase failure; it does not roll back the published catalog or replace existing ratings.
+
+Each run writes counts, warnings, publication state, and the workflow URL to `private.catalog_ingestion_runs` through service-role-only functions.
+Starting a run rejects overlap with another active run, marks runs older than four hours as failed, and removes audit and completed or failed catalog-refresh records older than 90 days.
+
 ## Deployment
 
 Vercel uses `src/app.ts` directly as its Express entry point.
 The app is exported separately from `src/server.ts` so serverless deployment does not create a long-lived listener, while local and standalone deployments can still use `npm start`.
 
-The GitHub Actions workflow in `.github/workflows/nightly-ingestion.yml` runs catalog ingestion outside the Vercel request lifecycle.
-Run it manually from GitHub Actions or locally with `npm run ingest -- --professors=auto`.
+The GitHub Actions workflow in [`.github/workflows/nightly-ingestion.yml`](../.github/workflows/nightly-ingestion.yml) runs catalog ingestion outside the Vercel request lifecycle.
+It runs nightly at 3:17 AM in `America/Chicago` and also supports manual term and professor-mode inputs.
+Configure `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` as repository Actions secrets before enabling or dispatching it.

@@ -21,8 +21,10 @@ if (process.env.NODE_ENV !== "production") {
   dotenv.config({ quiet: true });
 }
 
+/** Determines whether a catalog run also refreshes professor ratings. */
 export type ProfessorMode = "auto" | "always" | "never";
 
+/** Identifies a catalog run and its requested ingestion behavior. */
 export type CatalogIngestionOptions = Readonly<{
   requestedTerm?: string;
   professorMode: ProfessorMode;
@@ -31,6 +33,7 @@ export type CatalogIngestionOptions = Readonly<{
   now?: Date;
 }>;
 
+/** Defines the injectable operations used to orchestrate catalog ingestion. */
 export type CatalogIngestionDependencies = Readonly<{
   beginRun: typeof beginCatalogIngestionRun;
   completeRun: typeof completeCatalogIngestionRun;
@@ -53,6 +56,15 @@ const productionDependencies: CatalogIngestionDependencies = {
   upsertProfessors,
 };
 
+/**
+ * Audits a catalog run, publishes the catalog, then optionally updates ratings.
+ *
+ * Catalog publication is not rolled back when the later professor phase fails.
+ *
+ * @param options Requested term, professor mode, and audit metadata.
+ * @param dependencies Injectable ingestion, persistence, and enrichment operations.
+ * @returns Publication state, counts, resolved term, run ID, and warnings.
+ */
 export async function runCatalogIngestion(
   options: CatalogIngestionOptions,
   dependencies: CatalogIngestionDependencies = productionDependencies,
@@ -143,6 +155,7 @@ export async function runCatalogIngestion(
   }
 }
 
+/** Resolves explicit modes or the automatic Sunday and retry policy. */
 export async function resolveProfessorRefresh(
   mode: ProfessorMode,
   now: Date,
@@ -159,6 +172,7 @@ export async function resolveProfessorRefresh(
   return isSundayInCentralTime(now) || await shouldRetry();
 }
 
+/** Reports whether a timestamp falls on Sunday in America/Chicago. */
 export function isSundayInCentralTime(date: Date): boolean {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Chicago",

@@ -59,6 +59,8 @@ const PROFESSOR_QUERY = `
 `;
 
 type FetchResponse = Pick<Response, "json" | "ok" | "status" | "statusText">;
+
+/** Fetch-compatible client used for Rate My Professors GraphQL requests. */
 export type RmpFetch = (
   input: string,
   init?: RequestInit,
@@ -96,6 +98,7 @@ type ProfessorSearchData = Readonly<{
   }>;
 }>;
 
+/** Counts unique instructor lookups and their outcomes. */
 export type ProfessorEnrichmentCounts = Readonly<{
   requested: number;
   matched: number;
@@ -104,6 +107,7 @@ export type ProfessorEnrichmentCounts = Readonly<{
   successfulRequests: number;
 }>;
 
+/** Contains enriched course copies, successful ratings, counts, and warnings. */
 export type CourseRatingEnrichment = Readonly<{
   courses: Course[];
   professors: RMP[];
@@ -111,6 +115,7 @@ export type CourseRatingEnrichment = Readonly<{
   warnings: string[];
 }>;
 
+/** Defines the injectable operation used by professor enrichment. */
 export type EnrichCoursesWithRatingsDependencies = Readonly<{
   fetch: RmpFetch;
 }>;
@@ -119,6 +124,7 @@ const productionDependencies: EnrichCoursesWithRatingsDependencies = {
   fetch: globalThis.fetch,
 };
 
+/** Indicates that the professor phase completed no professor requests. */
 export class ProfessorEnrichmentUnavailableError extends Error {
   readonly counts: ProfessorEnrichmentCounts;
 
@@ -129,6 +135,7 @@ export class ProfessorEnrichmentUnavailableError extends Error {
   }
 }
 
+/** Converts a nullable percentage to a truncated integer from 0 through 100. */
 export function normalizePercentage(value: number | null): number {
   if (value === null || !Number.isFinite(value)) {
     return 0;
@@ -137,6 +144,17 @@ export function normalizePercentage(value: number | null): number {
   return Math.min(100, Math.max(0, Math.trunc(value)));
 }
 
+/**
+ * Fetches ratings for unique course instructors without mutating input courses.
+ *
+ * Successful lookups are returned even when other lookups fail.
+ * Existing course ratings are retained for unmatched or failed lookups.
+ *
+ * @param courses Courses whose instructors should be looked up.
+ * @param dependencies Injectable fetch client used by tests.
+ * @returns Enriched course copies, successful ratings, outcome counts, and warnings.
+ * @throws ProfessorEnrichmentUnavailableError when the school lookup fails or no professor request succeeds.
+ */
 export async function enrichCoursesWithRatings(
   courses: readonly Course[],
   dependencies: EnrichCoursesWithRatingsDependencies = productionDependencies,

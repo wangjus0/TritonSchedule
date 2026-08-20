@@ -24,8 +24,9 @@ const productionDependencies: IngestCatalogDependencies = {
 /**
  * Runs the full catalog ingestion process.
  *
+ * @param requestedTerm Optional Class Planner term code.
  * @param dependencies Operations used during ingestion.
- * @returns The ingested courses, professors, and term.
+ * @returns The catalog snapshot, legacy courses, and resolved term.
  */
 export async function ingestCatalog(
   requestedTerm?: string,
