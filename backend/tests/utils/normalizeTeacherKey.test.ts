@@ -5,8 +5,8 @@ import {
 } from "../../src/utils/normalizeTeacherKey.js";
 
 describe("normalizeTeacherKey", () => {
-  it("preserves letters while removing accents and punctuation", () => {
-    expect(normalizeTeacherKey("  Nayeli Jiménez-Cano  ")).toBe("nayeli jimenez cano");
+  it("preserves the historical punctuation-deleting database key format", () => {
+    expect(normalizeTeacherKey("  Hsiao-Bing Cheng  ")).toBe("hsiaobing cheng");
   });
 });
 
@@ -17,7 +17,7 @@ describe("teacherNamesMatch", () => {
     ["Massimiliano Di Ventra", "massimiliano diventra"],
     ["Mihir Bellare", "Bellare Mihir"],
     ["J. Silvio Gutkind", "Silvio Gutkind"],
-    ["Mayumi Mochizuki McKee", "Mayumi McKee"],
+    ["John A Smith", "John Alan Smith"],
   ])("accepts equivalent instructor names %p and %p", (left, right) => {
     expect(teacherNamesMatch(left, right)).toBe(true);
   });
@@ -27,6 +27,10 @@ describe("teacherNamesMatch", () => {
     ["Zongxin Yu", "Elaine Yu"],
     ["Michael Sailor", "Michael Overton"],
     ["J. Li", "K. Li"],
+    ["J. Silvio Gutkind", "K. Silvio Gutkind"],
+    ["John A Smith", "John B Smith"],
+    ["John Alan Smith", "John Brian Smith"],
+    ["Mayumi Mochizuki McKee", "Mayumi McKee"],
   ])("rejects different instructors %p and %p", (left, right) => {
     expect(teacherNamesMatch(left, right)).toBe(false);
   });

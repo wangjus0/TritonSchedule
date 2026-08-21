@@ -6,6 +6,7 @@ import {
   type RmpFetch,
 } from "../../src/ingestion/enrichCoursesWithRatings.js";
 import type { Course } from "../../src/models/Course.js";
+import { normalizeTeacherKey } from "../../src/utils/normalizeTeacherKey.js";
 
 function course(teacher: string, rmp: Course["rmp"] = null): Course {
   return {
@@ -17,7 +18,7 @@ function course(teacher: string, rmp: Course["rmp"] = null): Course {
     Name: `Course with ${teacher}`,
     Teacher: teacher,
     Term: "FA26",
-    nameKey: teacher.toLowerCase(),
+    nameKey: normalizeTeacherKey(teacher),
     rmp,
   };
 }
@@ -161,6 +162,41 @@ describe("enrichCoursesWithRatings", () => {
     expect(result.counts).toMatchObject({ matched: 0, unmatched: 1 });
     expect(result.professors).toEqual([]);
     expect(result.courses[0]?.rmp).toEqual(existing);
+  });
+
+  it("rejects a candidate with a conflicting middle initial", async () => {
+    const fetcher = jest.fn<RmpFetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { query: string };
+      return body.query.includes("SchoolSearch")
+        ? schoolResponse()
+        : professorResponse("John B Smith");
+    });
+
+    const result = await enrichCoursesWithRatings(
+      [course("John A Smith")],
+      { fetch: fetcher },
+    );
+
+    expect(result.counts).toMatchObject({ matched: 0, unmatched: 1 });
+    expect(result.professors).toEqual([]);
+  });
+
+  it("keeps the historical key while matching a hyphenated instructor", async () => {
+    const fetcher = jest.fn<RmpFetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { query: string };
+      return body.query.includes("SchoolSearch")
+        ? schoolResponse()
+        : professorResponse("Hsiao-Bing Cheng");
+    });
+
+    const result = await enrichCoursesWithRatings(
+      [course("Hsiao-Bing Cheng")],
+      { fetch: fetcher },
+    );
+
+    expect(result.professors[0]).toEqual(expect.objectContaining({
+      nameKey: "hsiaobing cheng",
+    }));
   });
 
   it("retries rate limits up to three total attempts", async () => {

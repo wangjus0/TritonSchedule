@@ -1,4 +1,39 @@
 export function normalizeTeacherKey(name: string): string {
+  // This value is persisted and queried as a database key. Keep the original
+  // punctuation-deleting format stable; flexible comparison belongs below.
+  return name
+    .replace(/\s+/g, " ")
+    .replace(/[^\w\s]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+export function teacherNamesMatch(left: string, right: string): boolean {
+  const leftName = normalizeTeacherName(left);
+  const rightName = normalizeTeacherName(right);
+
+  if (!leftName || !rightName) {
+    return false;
+  }
+
+  if (leftName === rightName || compact(leftName) === compact(rightName)) {
+    return true;
+  }
+
+  const [leftTokens, rightTokens] = withoutUnpairedLeadingInitial(
+    leftName.split(" "),
+    rightName.split(" "),
+  );
+
+  return compatibleTokenSequences(leftTokens, rightTokens) ||
+    compatibleTokenSequences(leftTokens, rightTokens.slice().reverse());
+}
+
+function compact(nameKey: string): string {
+  return nameKey.replace(/\s/g, "");
+}
+
+function normalizeTeacherName(name: string): string {
   return name
     .normalize("NFKD")
     .replace(/\p{M}/gu, "")
@@ -8,41 +43,29 @@ export function normalizeTeacherKey(name: string): string {
     .toLowerCase();
 }
 
-export function teacherNamesMatch(left: string, right: string): boolean {
-  const leftKey = normalizeTeacherKey(left);
-  const rightKey = normalizeTeacherKey(right);
+function withoutUnpairedLeadingInitial(
+  left: string[],
+  right: string[],
+): [string[], string[]] {
+  const leftHasInitial = left.length > 2 && left[0]?.length === 1;
+  const rightHasInitial = right.length > 2 && right[0]?.length === 1;
 
-  if (!leftKey || !rightKey) {
-    return false;
+  if (leftHasInitial === rightHasInitial) {
+    return [left, right];
   }
 
-  if (leftKey === rightKey || compact(leftKey) === compact(rightKey)) {
-    return true;
-  }
-
-  const leftTokens = meaningfulTokens(leftKey);
-  const rightTokens = meaningfulTokens(rightKey);
-
-  if (leftTokens.length < 2 || rightTokens.length < 2) {
-    return false;
-  }
-
-  if (sortedTokens(leftTokens) === sortedTokens(rightTokens)) {
-    return true;
-  }
-
-  return leftTokens[0] === rightTokens[0] &&
-    leftTokens.at(-1) === rightTokens.at(-1);
+  return leftHasInitial
+    ? [left.slice(1), right]
+    : [left, right.slice(1)];
 }
 
-function compact(nameKey: string): string {
-  return nameKey.replace(/\s/g, "");
+function compatibleTokenSequences(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length &&
+    left.every((token, index) => tokensMatch(token, right[index] ?? ""));
 }
 
-function meaningfulTokens(nameKey: string): string[] {
-  return nameKey.split(" ").filter((token) => token.length > 1);
-}
-
-function sortedTokens(tokens: readonly string[]): string {
-  return tokens.slice().sort().join(" ");
+function tokensMatch(left: string, right: string): boolean {
+  return left === right ||
+    (left.length === 1 && right.startsWith(left)) ||
+    (right.length === 1 && left.startsWith(right));
 }

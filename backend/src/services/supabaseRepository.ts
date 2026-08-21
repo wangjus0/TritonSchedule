@@ -198,7 +198,8 @@ function toRmpDocument(row: ProfessorRow): RMP {
 }
 
 export function isExactProfessorMatch(professor: RMP): boolean {
-  return teacherNamesMatch(professor.name, professor.nameKey);
+  return normalizeTeacherKey(professor.name) === professor.nameKey ||
+    teacherNamesMatch(professor.name, professor.nameKey);
 }
 
 function toExactRmpDocuments(rows: readonly ProfessorRow[]): RMP[] {

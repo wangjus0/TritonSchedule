@@ -165,13 +165,20 @@ export async function enrichCoursesWithRatings(
   courses: readonly Course[],
   dependencies: EnrichCoursesWithRatingsDependencies = productionDependencies,
 ): Promise<CourseRatingEnrichment> {
-  const teacherKeys = Array.from(new Set(
-    courses
-      .map(({ Teacher }) => normalizeTeacherKey(Teacher))
-      .filter((teacher) => teacher.length > 0),
-  ));
+  const teachersByKey = new Map<string, string>();
+  for (const { Teacher } of courses) {
+    const teacherName = Teacher.trim();
+    const teacherKey = normalizeTeacherKey(teacherName);
+    if (teacherKey && !teachersByKey.has(teacherKey)) {
+      teachersByKey.set(teacherKey, teacherName);
+    }
+  }
+  const teachers = Array.from(
+    teachersByKey,
+    ([teacherKey, teacherName]) => ({ teacherKey, teacherName }),
+  );
 
-  if (teacherKeys.length === 0) {
+  if (teachers.length === 0) {
     return {
       courses: courses.map((course) => ({ ...course })),
       professors: [],
@@ -188,16 +195,21 @@ export async function enrichCoursesWithRatings(
   } catch (error) {
     throw new ProfessorEnrichmentUnavailableError(
       `Rate My Professors school lookup failed: ${errorMessage(error)}`,
-      { ...emptyCounts(), requested: teacherKeys.length },
+      { ...emptyCounts(), requested: teachers.length },
     );
   }
 
   const results = await parallelMap(
-    teacherKeys,
+    teachers,
     REQUEST_CONCURRENCY,
-    async (teacherKey) => {
+    async ({ teacherKey, teacherName }) => {
       try {
-        const professor = await findProfessor(teacherKey, schoolId, dependencies.fetch);
+        const professor = await findProfessor(
+          teacherName,
+          teacherKey,
+          schoolId,
+          dependencies.fetch,
+        );
         return { professor, teacherKey } as const;
       } catch (error) {
         return { error: errorMessage(error), teacherKey } as const;
@@ -230,7 +242,7 @@ export async function enrichCoursesWithRatings(
   }
 
   const counts: ProfessorEnrichmentCounts = {
-    requested: teacherKeys.length,
+    requested: teachers.length,
     matched: professors.length,
     unmatched,
     failed,
@@ -283,6 +295,7 @@ async function findSchoolId(fetcher: RmpFetch): Promise<string> {
 }
 
 async function findProfessor(
+  teacherName: string,
   teacherKey: string,
   schoolId: string,
   fetcher: RmpFetch,
@@ -304,7 +317,7 @@ async function findProfessor(
   const node = data.search.teachers.edges
     .map(({ node: candidate }) => candidate)
     .find((candidate) =>
-      teacherNamesMatch(`${candidate.firstName} ${candidate.lastName}`, teacherKey)
+      teacherNamesMatch(`${candidate.firstName} ${candidate.lastName}`, teacherName)
     );
 
   if (!node) {
