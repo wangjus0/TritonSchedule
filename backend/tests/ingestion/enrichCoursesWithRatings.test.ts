@@ -181,6 +181,28 @@ describe("enrichCoursesWithRatings", () => {
     expect(result.professors).toEqual([]);
   });
 
+  it("accepts a candidate that omits an optional middle initial", async () => {
+    const fetcher = jest.fn<RmpFetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { query: string };
+      return body.query.includes("SchoolSearch")
+        ? schoolResponse()
+        : professorResponse("John Smith");
+    });
+
+    const result = await enrichCoursesWithRatings(
+      [course("John A Smith")],
+      { fetch: fetcher },
+    );
+
+    expect(result.counts).toMatchObject({ matched: 1, unmatched: 0 });
+    expect(result.professors).toEqual([
+      expect.objectContaining({
+        nameKey: "john a smith",
+        profileUrl: "https://www.ratemyprofessors.com/professor/12345",
+      }),
+    ]);
+  });
+
   it("keeps the historical key while matching a hyphenated instructor", async () => {
     const fetcher = jest.fn<RmpFetch>(async (_url, init) => {
       const body = JSON.parse(String(init?.body)) as { query: string };

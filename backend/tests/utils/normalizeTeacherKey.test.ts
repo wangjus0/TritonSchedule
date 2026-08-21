@@ -18,6 +18,7 @@ describe("teacherNamesMatch", () => {
     ["Mihir Bellare", "Bellare Mihir"],
     ["J. Silvio Gutkind", "Silvio Gutkind"],
     ["John A Smith", "John Alan Smith"],
+    ["John A Smith", "John Smith"],
   ])("accepts equivalent instructor names %p and %p", (left, right) => {
     expect(teacherNamesMatch(left, right)).toBe(true);
   });

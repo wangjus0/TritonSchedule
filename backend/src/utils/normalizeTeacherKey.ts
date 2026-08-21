@@ -20,10 +20,8 @@ export function teacherNamesMatch(left: string, right: string): boolean {
     return true;
   }
 
-  const [leftTokens, rightTokens] = withoutUnpairedLeadingInitial(
-    leftName.split(" "),
-    rightName.split(" "),
-  );
+  const leftTokens = leftName.split(" ");
+  const rightTokens = rightName.split(" ");
 
   return compatibleTokenSequences(leftTokens, rightTokens) ||
     compatibleTokenSequences(leftTokens, rightTokens.slice().reverse());
@@ -43,23 +41,33 @@ function normalizeTeacherName(name: string): string {
     .toLowerCase();
 }
 
-function withoutUnpairedLeadingInitial(
-  left: string[],
-  right: string[],
-): [string[], string[]] {
-  const leftHasInitial = left.length > 2 && left[0]?.length === 1;
-  const rightHasInitial = right.length > 2 && right[0]?.length === 1;
-
-  if (leftHasInitial === rightHasInitial) {
-    return [left, right];
+function compatibleTokenSequences(left: readonly string[], right: readonly string[]): boolean {
+  if (tokenSequencesMatch(left, right)) {
+    return true;
   }
 
-  return leftHasInitial
-    ? [left.slice(1), right]
-    : [left, right.slice(1)];
+  let longer: readonly string[];
+  let shorter: readonly string[];
+  if (left.length === right.length + 1) {
+    longer = left;
+    shorter = right;
+  } else if (right.length === left.length + 1) {
+    longer = right;
+    shorter = left;
+  } else {
+    return false;
+  }
+
+  return longer.some((token, index) =>
+    token.length === 1 &&
+    tokenSequencesMatch(
+      [...longer.slice(0, index), ...longer.slice(index + 1)],
+      shorter,
+    )
+  );
 }
 
-function compatibleTokenSequences(left: readonly string[], right: readonly string[]): boolean {
+function tokenSequencesMatch(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length &&
     left.every((token, index) => tokensMatch(token, right[index] ?? ""));
 }
