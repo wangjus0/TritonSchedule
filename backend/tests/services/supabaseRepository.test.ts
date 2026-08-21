@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import {
   exactSubjectCodeFromSearch,
+  isExactProfessorMatch,
   mapOfferingToCourses,
 } from "../../src/services/supabaseRepository.js";
 
@@ -253,5 +254,27 @@ describe("exactSubjectCodeFromSearch", () => {
     expect(exactSubjectCodeFromSearch("MATH 20C")).toBeNull();
     expect(exactSubjectCodeFromSearch("mathematics")).toBeNull();
     expect(exactSubjectCodeFromSearch("smith")).toBeNull();
+  });
+});
+
+describe("isExactProfessorMatch", () => {
+  it("accepts punctuation differences normalized from the same instructor name", () => {
+    expect(isExactProfessorMatch({
+      avgDiff: 4.3,
+      avgRating: 1.9,
+      name: "Hsiao-Bing Cheng",
+      nameKey: "hsiaobing cheng",
+      takeAgainPercent: 20,
+    })).toBe(true);
+  });
+
+  it("rejects a stale fuzzy match stored under another instructor's key", () => {
+    expect(isExactProfessorMatch({
+      avgDiff: 3.7,
+      avgRating: 2.5,
+      name: "Yousaf Habib",
+      nameKey: "yizhuang you",
+      takeAgainPercent: 44,
+    })).toBe(false);
   });
 });

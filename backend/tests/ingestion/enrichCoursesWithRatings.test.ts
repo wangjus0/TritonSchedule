@@ -6,6 +6,7 @@ import {
   type RmpFetch,
 } from "../../src/ingestion/enrichCoursesWithRatings.js";
 import type { Course } from "../../src/models/Course.js";
+import { normalizeTeacherKey } from "../../src/utils/normalizeTeacherKey.js";
 
 function course(teacher: string, rmp: Course["rmp"] = null): Course {
   return {
@@ -17,7 +18,7 @@ function course(teacher: string, rmp: Course["rmp"] = null): Course {
     Name: `Course with ${teacher}`,
     Teacher: teacher,
     Term: "FA26",
-    nameKey: teacher.toLowerCase(),
+    nameKey: normalizeTeacherKey(teacher),
     rmp,
   };
 }
@@ -43,22 +44,25 @@ function schoolResponse() {
   });
 }
 
-function professorResponse(name = "Ada Lovelace") {
-  const [firstName, lastName] = name.split(" ");
+function professorResponse(...names: string[]) {
+  const professorNames = names.length > 0 ? names : ["Ada Lovelace"];
   return response({
     data: {
       search: {
         teachers: {
-          edges: [{
-            node: {
+          edges: professorNames.map((name, index) => {
+            const [firstName, ...lastNameParts] = name.split(" ");
+            return {
+              node: {
               avgDifficulty: 2.4,
               avgRating: 4.8,
               firstName,
-              lastName,
-              legacyId: 12345,
+              lastName: lastNameParts.join(" "),
+              legacyId: 12345 + index,
               wouldTakeAgainPercent: 91.7,
             },
-          }],
+            };
+          }),
         },
       },
     },
@@ -111,6 +115,110 @@ describe("enrichCoursesWithRatings", () => {
       profileUrl: "https://www.ratemyprofessors.com/professor/12345",
       takeAgainPercent: 91,
     });
+  });
+
+  it("selects the exact professor when a fuzzy result is ranked first", async () => {
+    const fetcher = jest.fn<RmpFetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { query: string };
+      return body.query.includes("SchoolSearch")
+        ? schoolResponse()
+        : professorResponse("Yousaf Habib", "Yizhuang You");
+    });
+
+    const result = await enrichCoursesWithRatings(
+      [course("Yizhuang You")],
+      { fetch: fetcher },
+    );
+
+    expect(result.professors).toEqual([
+      expect.objectContaining({
+        name: "yizhuang you",
+        nameKey: "yizhuang you",
+        profileUrl: "https://www.ratemyprofessors.com/professor/12346",
+      }),
+    ]);
+  });
+
+  it("does not attach a fuzzy result for a different professor", async () => {
+    const existing = {
+      avgDiff: 3,
+      avgRating: 4,
+      name: "yizhuang you",
+      nameKey: "yizhuang you",
+      takeAgainPercent: 80,
+    };
+    const fetcher = jest.fn<RmpFetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { query: string };
+      return body.query.includes("SchoolSearch")
+        ? schoolResponse()
+        : professorResponse("Yousaf Habib");
+    });
+
+    const result = await enrichCoursesWithRatings(
+      [course("Yizhuang You", existing)],
+      { fetch: fetcher },
+    );
+
+    expect(result.counts).toMatchObject({ matched: 0, unmatched: 1 });
+    expect(result.professors).toEqual([]);
+    expect(result.courses[0]?.rmp).toEqual(existing);
+  });
+
+  it("rejects a candidate with a conflicting middle initial", async () => {
+    const fetcher = jest.fn<RmpFetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { query: string };
+      return body.query.includes("SchoolSearch")
+        ? schoolResponse()
+        : professorResponse("John B Smith");
+    });
+
+    const result = await enrichCoursesWithRatings(
+      [course("John A Smith")],
+      { fetch: fetcher },
+    );
+
+    expect(result.counts).toMatchObject({ matched: 0, unmatched: 1 });
+    expect(result.professors).toEqual([]);
+  });
+
+  it("accepts a candidate that omits an optional middle initial", async () => {
+    const fetcher = jest.fn<RmpFetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { query: string };
+      return body.query.includes("SchoolSearch")
+        ? schoolResponse()
+        : professorResponse("John Smith");
+    });
+
+    const result = await enrichCoursesWithRatings(
+      [course("John A Smith")],
+      { fetch: fetcher },
+    );
+
+    expect(result.counts).toMatchObject({ matched: 1, unmatched: 0 });
+    expect(result.professors).toEqual([
+      expect.objectContaining({
+        nameKey: "john a smith",
+        profileUrl: "https://www.ratemyprofessors.com/professor/12345",
+      }),
+    ]);
+  });
+
+  it("keeps the historical key while matching a hyphenated instructor", async () => {
+    const fetcher = jest.fn<RmpFetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { query: string };
+      return body.query.includes("SchoolSearch")
+        ? schoolResponse()
+        : professorResponse("Hsiao-Bing Cheng");
+    });
+
+    const result = await enrichCoursesWithRatings(
+      [course("Hsiao-Bing Cheng")],
+      { fetch: fetcher },
+    );
+
+    expect(result.professors[0]).toEqual(expect.objectContaining({
+      nameKey: "hsiaobing cheng",
+    }));
   });
 
   it("retries rate limits up to three total attempts", async () => {
@@ -174,7 +282,7 @@ describe("enrichCoursesWithRatings", () => {
     )).rejects.toBeInstanceOf(ProfessorEnrichmentUnavailableError);
   });
 
-  it("limits professor request concurrency to four", async () => {
+  it("serializes professor requests to avoid upstream rate limits", async () => {
     let active = 0;
     let maximumActive = 0;
     const fetcher = jest.fn<RmpFetch>(async (_url, init) => {
@@ -193,6 +301,6 @@ describe("enrichCoursesWithRatings", () => {
 
     await enrichCoursesWithRatings(courses, { fetch: fetcher });
 
-    expect(maximumActive).toBe(4);
+    expect(maximumActive).toBe(1);
   });
 });
