@@ -8,6 +8,18 @@ export function normalizeTeacherKey(name: string): string {
     .toLowerCase();
 }
 
+const VERIFIED_FULL_NAME_ALIASES = new Set([
+  "berk ustun|berk usstun",
+  "chung cheng|chung kuan cheng",
+  "elizabeth simon|beth simon",
+  "garrison cottrell|gary cottrell",
+  "joe politz|joseph politz",
+  "mia minnes|mia minnes kemp",
+  "ndapandula nakashole|ndapa nakashole",
+  "shlomo dubnov|schlomo dubnov",
+  "steven swanson|steve swanson",
+]);
+
 export function teacherNamesMatch(left: string, right: string): boolean {
   const leftName = normalizeTeacherName(left);
   const rightName = normalizeTeacherName(right);
@@ -20,11 +32,20 @@ export function teacherNamesMatch(left: string, right: string): boolean {
     return true;
   }
 
+  if (verifiedFullNameAliasesMatch(leftName, rightName)) {
+    return true;
+  }
+
   const leftTokens = leftName.split(" ");
   const rightTokens = rightName.split(" ");
 
   return compatibleTokenSequences(leftTokens, rightTokens) ||
     compatibleTokenSequences(leftTokens, rightTokens.slice().reverse());
+}
+
+function verifiedFullNameAliasesMatch(left: string, right: string): boolean {
+  return VERIFIED_FULL_NAME_ALIASES.has(`${left}|${right}`) ||
+    VERIFIED_FULL_NAME_ALIASES.has(`${right}|${left}`);
 }
 
 function compact(nameKey: string): string {

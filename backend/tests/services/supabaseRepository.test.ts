@@ -277,4 +277,14 @@ describe("isExactProfessorMatch", () => {
       takeAgainPercent: 44,
     })).toBe(false);
   });
+
+  it("accepts a verified RMP alias stored under the catalog instructor key", () => {
+    expect(isExactProfessorMatch({
+      avgDiff: 2.1,
+      avgRating: 4.2,
+      name: "Joseph Politz",
+      nameKey: "joe politz",
+      takeAgainPercent: 90,
+    })).toBe(true);
+  });
 });

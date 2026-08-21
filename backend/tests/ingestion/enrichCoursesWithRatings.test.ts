@@ -69,6 +69,16 @@ function professorResponse(...names: string[]) {
   });
 }
 
+type ProfessorResponsePayload = {
+  data: {
+    search: {
+      teachers: {
+        edges: Array<{ node: { avgRating: number } }>;
+      };
+    };
+  };
+};
+
 describe("normalizePercentage", () => {
   it.each([
     [-1, 0],
@@ -201,6 +211,94 @@ describe("enrichCoursesWithRatings", () => {
         profileUrl: "https://www.ratemyprofessors.com/professor/12345",
       }),
     ]);
+  });
+
+  it.each([
+    ["Berk Ustun", "Berk Usstun"],
+    ["Chung Cheng", "Chung-Kuan Cheng"],
+    ["Elizabeth Simon", "Beth Simon"],
+    ["Garrison Cottrell", "Gary Cottrell"],
+    ["Joe Politz", "Joseph Politz"],
+    ["Ndapandula Nakashole", "Ndapa Nakashole"],
+    ["Shlomo Dubnov", "Schlomo Dubnov"],
+    ["Steven Swanson", "Steve Swanson"],
+  ])("matches the verified RMP identity variant %p to %p", async (teacher, candidate) => {
+    const fetcher = jest.fn<RmpFetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { query: string };
+      return body.query.includes("SchoolSearch")
+        ? schoolResponse()
+        : professorResponse(candidate);
+    });
+
+    const result = await enrichCoursesWithRatings(
+      [course(teacher)],
+      { fetch: fetcher },
+    );
+
+    expect(result.counts).toMatchObject({ matched: 1, unmatched: 0 });
+    expect(result.professors[0]).toEqual(expect.objectContaining({
+      nameKey: normalizeTeacherKey(teacher),
+    }));
+  });
+
+  it("skips an unrelated fuzzy result before a verified identity variant", async () => {
+    const fetcher = jest.fn<RmpFetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { query: string };
+      return body.query.includes("SchoolSearch")
+        ? schoolResponse()
+        : professorResponse("Berk Schneider", "Berk Usstun");
+    });
+
+    const result = await enrichCoursesWithRatings(
+      [course("Berk Ustun")],
+      { fetch: fetcher },
+    );
+
+    expect(result.professors[0]).toEqual(expect.objectContaining({
+      name: "berk usstun",
+      profileUrl: "https://www.ratemyprofessors.com/professor/12346",
+    }));
+  });
+
+  it("prefers a rated surname variant over an unrated duplicate profile", async () => {
+    const fetcher = jest.fn<RmpFetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { query: string };
+      if (body.query.includes("SchoolSearch")) return schoolResponse();
+      const result = await professorResponse("Mia Minnes", "Mia Minnes-Kemp").json() as
+        ProfessorResponsePayload;
+      result.data.search.teachers.edges[0].node.avgRating = 0;
+      return response(result);
+    });
+
+    const result = await enrichCoursesWithRatings(
+      [course("Mia Minnes")],
+      { fetch: fetcher },
+    );
+
+    expect(result.professors[0]).toEqual(expect.objectContaining({
+      avgRating: 4.8,
+      name: "mia minnes-kemp",
+      profileUrl: "https://www.ratemyprofessors.com/professor/12346",
+    }));
+  });
+
+  it("does not publish an unrated RMP profile as a zero-star rating", async () => {
+    const fetcher = jest.fn<RmpFetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { query: string };
+      if (body.query.includes("SchoolSearch")) return schoolResponse();
+      const result = await professorResponse("Melissa Gymrek").json() as
+        ProfessorResponsePayload;
+      result.data.search.teachers.edges[0].node.avgRating = 0;
+      return response(result);
+    });
+
+    const result = await enrichCoursesWithRatings(
+      [course("Melissa Gymrek")],
+      { fetch: fetcher },
+    );
+
+    expect(result.counts).toMatchObject({ matched: 0, unmatched: 1 });
+    expect(result.professors).toEqual([]);
   });
 
   it("keeps the historical key while matching a hyphenated instructor", async () => {

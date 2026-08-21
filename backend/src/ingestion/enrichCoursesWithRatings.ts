@@ -317,6 +317,8 @@ async function findProfessor(
   const node = data.search.teachers.edges
     .map(({ node: candidate }) => candidate)
     .find((candidate) =>
+      Number.isFinite(candidate.avgRating) &&
+      candidate.avgRating > 0 &&
       teacherNamesMatch(`${candidate.firstName} ${candidate.lastName}`, teacherName)
     );
 
