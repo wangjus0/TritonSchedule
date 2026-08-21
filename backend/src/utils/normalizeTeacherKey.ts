@@ -9,15 +9,16 @@ export function normalizeTeacherKey(name: string): string {
 }
 
 const VERIFIED_FULL_NAME_ALIASES = new Set([
+  "berk ustun|berk usstun",
   "chung cheng|chung kuan cheng",
+  "elizabeth simon|beth simon",
+  "garrison cottrell|gary cottrell",
+  "joe politz|joseph politz",
+  "mia minnes|mia minnes kemp",
+  "ndapandula nakashole|ndapa nakashole",
+  "shlomo dubnov|schlomo dubnov",
+  "steven swanson|steve swanson",
 ]);
-
-const VERIFIED_GIVEN_NAME_ALIAS_GROUPS: ReadonlyArray<ReadonlySet<string>> = [
-  new Set(["beth", "elizabeth"]),
-  new Set(["gary", "garrison"]),
-  new Set(["joe", "joseph"]),
-  new Set(["steve", "steven", "stephen"]),
-];
 
 export function teacherNamesMatch(left: string, right: string): boolean {
   const leftName = normalizeTeacherName(left);
@@ -38,11 +39,8 @@ export function teacherNamesMatch(left: string, right: string): boolean {
   const leftTokens = leftName.split(" ");
   const rightTokens = rightName.split(" ");
 
-  const reversedRightTokens = rightTokens.slice().reverse();
   return compatibleTokenSequences(leftTokens, rightTokens) ||
-    compatibleTokenSequences(leftTokens, reversedRightTokens) ||
-    highConfidenceNameVariantsMatch(leftTokens, rightTokens) ||
-    highConfidenceNameVariantsMatch(leftTokens, reversedRightTokens);
+    compatibleTokenSequences(leftTokens, rightTokens.slice().reverse());
 }
 
 function verifiedFullNameAliasesMatch(left: string, right: string): boolean {
@@ -88,89 +86,6 @@ function compatibleTokenSequences(left: readonly string[], right: readonly strin
       shorter,
     )
   );
-}
-
-function highConfidenceNameVariantsMatch(
-  left: readonly string[],
-  right: readonly string[],
-): boolean {
-  if (left.length === 2 && right.length === 2) {
-    const givenNamesMatch = givenNameVariantsMatch(left[0]!, right[0]!);
-    const familyNamesMatch = familyNameVariantsMatch(left[1]!, right[1]!);
-    const hasExactAnchor = left[0] === right[0] || left[1] === right[1];
-    return givenNamesMatch && familyNamesMatch && hasExactAnchor;
-  }
-
-  let shorter: readonly string[];
-  let longer: readonly string[];
-  if (left.length === 2 && right.length >= 3) {
-    shorter = left;
-    longer = right;
-  } else if (right.length === 2 && left.length >= 3) {
-    shorter = right;
-    longer = left;
-  } else {
-    return false;
-  }
-
-  return givenNameVariantsMatch(shorter[0]!, longer[0]!) &&
-    familyNameVariantsMatch(shorter[1]!, longer[1]!) &&
-    (shorter[0] === longer[0] || shorter[1] === longer[1]);
-}
-
-function givenNameVariantsMatch(left: string, right: string): boolean {
-  if (left === right || areVerifiedGivenNameAliases(left, right)) {
-    return true;
-  }
-
-  const shorter = left.length <= right.length ? left : right;
-  const longer = shorter === left ? right : left;
-  return (shorter.length >= 4 && longer.startsWith(shorter)) ||
-    (shorter.length >= 5 && editDistanceAtMostOne(left, right));
-}
-
-function familyNameVariantsMatch(left: string, right: string): boolean {
-  return left === right ||
-    (Math.min(left.length, right.length) >= 5 && editDistanceAtMostOne(left, right));
-}
-
-function areVerifiedGivenNameAliases(left: string, right: string): boolean {
-  return VERIFIED_GIVEN_NAME_ALIAS_GROUPS.some((group) =>
-    group.has(left) && group.has(right)
-  );
-}
-
-function editDistanceAtMostOne(left: string, right: string): boolean {
-  if (Math.abs(left.length - right.length) > 1) {
-    return false;
-  }
-
-  let leftIndex = 0;
-  let rightIndex = 0;
-  let edits = 0;
-  while (leftIndex < left.length && rightIndex < right.length) {
-    if (left[leftIndex] === right[rightIndex]) {
-      leftIndex += 1;
-      rightIndex += 1;
-      continue;
-    }
-
-    edits += 1;
-    if (edits > 1) {
-      return false;
-    }
-
-    if (left.length > right.length) {
-      leftIndex += 1;
-    } else if (right.length > left.length) {
-      rightIndex += 1;
-    } else {
-      leftIndex += 1;
-      rightIndex += 1;
-    }
-  }
-
-  return edits + (leftIndex < left.length || rightIndex < right.length ? 1 : 0) <= 1;
 }
 
 function tokenSequencesMatch(left: readonly string[], right: readonly string[]): boolean {

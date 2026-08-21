@@ -44,6 +44,9 @@ describe("teacherNamesMatch", () => {
     ["Mayumi Mochizuki McKee", "Mayumi McKee"],
     ["Aaron Shalev", "Aaron Schulman"],
     ["Hannah Carter", "Andrea Carter"],
+    ["John Smith", "John Smyth"],
+    ["John Smith", "Johnny Smith"],
+    ["Mia Minnes", "Mia Minnes-Sanchez"],
     ["Tzu Mao Li", "Liam Mueller"],
   ])("rejects different instructors %p and %p", (left, right) => {
     expect(teacherNamesMatch(left, right)).toBe(false);
