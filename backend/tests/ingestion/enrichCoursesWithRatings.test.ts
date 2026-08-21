@@ -127,6 +127,37 @@ describe("enrichCoursesWithRatings", () => {
     });
   });
 
+  it("looks up displayed instructors that are not the legacy course teacher", async () => {
+    const fetcher = jest.fn<RmpFetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as {
+        variables?: { query?: { text?: string } };
+      };
+      const query = body.variables?.query?.text;
+
+      if (!query || query === "University of California San Diego") {
+        return schoolResponse();
+      }
+
+      return query === "grace hopper"
+        ? professorResponse("Grace Hopper")
+        : professorResponse("Ada Lovelace");
+    });
+
+    const result = await enrichCoursesWithRatings(
+      [course("Ada Lovelace")],
+      {
+        additionalInstructorNames: ["Grace Hopper", "Ada Lovelace", "  "],
+        fetch: fetcher,
+      },
+    );
+
+    expect(result.counts).toMatchObject({ matched: 2, requested: 2 });
+    expect(result.professors.map(({ nameKey }) => nameKey)).toEqual([
+      "ada lovelace",
+      "grace hopper",
+    ]);
+  });
+
   it("selects the exact professor when a fuzzy result is ranked first", async () => {
     const fetcher = jest.fn<RmpFetch>(async (_url, init) => {
       const body = JSON.parse(String(init?.body)) as { query: string };

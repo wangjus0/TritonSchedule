@@ -12,7 +12,7 @@ const catalog: ClassPlannerCatalogSnapshot = {
   event_packages: [],
   meetings: [],
   module_routes: [],
-  offerings: [{ source_key: "CSE-101" }] as ClassPlannerCatalogSnapshot["offerings"],
+  offerings: [],
   package_sections: [],
   sections: [],
 };
@@ -85,6 +85,43 @@ describe("runCatalogIngestion", () => {
 
     expect(calls).toEqual(["catalog", "professors"]);
     expect(result.catalogPublished).toBe(true);
+  });
+
+  it("enriches every instructor displayed by offerings and sections", async () => {
+    const enrichProfessors = jest.fn<CatalogIngestionDependencies["enrichProfessors"]>(
+      async (_courses, options) => {
+        expect(options?.additionalInstructorNames).toEqual([
+          "Ada Lovelace",
+          "Grace Hopper",
+          "Barbara Liskov",
+        ]);
+        return dependencies().enrichProfessors(courses);
+      },
+    );
+    const displayedInstructorCatalog: ClassPlannerCatalogSnapshot = {
+      ...catalog,
+      offerings: [{
+        source_key: "CSE-293",
+        instructors: ["Ada Lovelace", "Grace Hopper"],
+      }] as unknown as ClassPlannerCatalogSnapshot["offerings"],
+      sections: [{
+        instructors: ["Barbara Liskov", "Grace Hopper"],
+      }] as unknown as ClassPlannerCatalogSnapshot["sections"],
+    };
+
+    await runCatalogIngestion(
+      { professorMode: "always", trigger: "workflow_dispatch" },
+      dependencies({
+        enrichProfessors,
+        ingest: async () => ({
+          catalog: displayedInstructorCatalog,
+          courses,
+          term: "FA26",
+        }),
+      }),
+    );
+
+    expect(enrichProfessors).toHaveBeenCalledTimes(1);
   });
 
   it("completes with warnings after a partial professor failure", async () => {
