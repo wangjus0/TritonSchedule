@@ -99,7 +99,9 @@ export async function runCatalogIngestion(
 
     if (professorsRequested) {
       try {
-        const enrichment = await dependencies.enrichProfessors(result.courses);
+        const enrichment = await dependencies.enrichProfessors(result.courses, {
+          additionalInstructorNames: catalogInstructorNames(result.catalog),
+        });
         professorCounts = enrichment.counts;
         warnings.push(...enrichment.warnings);
         await dependencies.upsertProfessors(enrichment.professors);
@@ -153,6 +155,15 @@ export async function runCatalogIngestion(
 
     throw error;
   }
+}
+
+function catalogInstructorNames(
+  catalog: ClassPlannerCatalogSnapshot,
+): string[] {
+  return Array.from(new Set([
+    ...catalog.offerings.flatMap(({ instructors }) => instructors),
+    ...catalog.sections.flatMap(({ instructors }) => instructors),
+  ].map((name) => name.trim()).filter(Boolean)));
 }
 
 /** Resolves explicit modes or the automatic Sunday and retry policy. */

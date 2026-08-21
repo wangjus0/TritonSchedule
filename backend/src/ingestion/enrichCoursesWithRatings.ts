@@ -121,14 +121,11 @@ export type CourseRatingEnrichment = Readonly<{
   warnings: string[];
 }>;
 
-/** Defines the injectable operation used by professor enrichment. */
-export type EnrichCoursesWithRatingsDependencies = Readonly<{
-  fetch: RmpFetch;
+/** Configures professor enrichment and its injectable fetch operation. */
+export type EnrichCoursesWithRatingsOptions = Readonly<{
+  additionalInstructorNames?: readonly string[];
+  fetch?: RmpFetch;
 }>;
-
-const productionDependencies: EnrichCoursesWithRatingsDependencies = {
-  fetch: globalThis.fetch,
-};
 
 /** Indicates that the professor phase completed no professor requests. */
 export class ProfessorEnrichmentUnavailableError extends Error {
@@ -157,17 +154,22 @@ export function normalizePercentage(value: number | null): number {
  * Existing course ratings are retained for unmatched or failed lookups.
  *
  * @param courses Courses whose instructors should be looked up.
- * @param dependencies Injectable fetch client used by tests.
+ * @param options Additional displayed instructors and an injectable fetch client.
  * @returns Enriched course copies, successful ratings, outcome counts, and warnings.
  * @throws ProfessorEnrichmentUnavailableError when the school lookup fails or no professor request succeeds.
  */
 export async function enrichCoursesWithRatings(
   courses: readonly Course[],
-  dependencies: EnrichCoursesWithRatingsDependencies = productionDependencies,
+  options: EnrichCoursesWithRatingsOptions = {},
 ): Promise<CourseRatingEnrichment> {
   const teachersByKey = new Map<string, string>();
-  for (const { Teacher } of courses) {
-    const teacherName = Teacher.trim();
+  const instructorNames = [
+    ...courses.map(({ Teacher }) => Teacher),
+    ...(options.additionalInstructorNames ?? []),
+  ];
+
+  for (const instructorName of instructorNames) {
+    const teacherName = instructorName.trim();
     const teacherKey = normalizeTeacherKey(teacherName);
     if (teacherKey && !teachersByKey.has(teacherKey)) {
       teachersByKey.set(teacherKey, teacherName);
@@ -189,9 +191,10 @@ export async function enrichCoursesWithRatings(
   }
 
   let schoolId: string;
+  const fetcher = options.fetch ?? globalThis.fetch;
 
   try {
-    schoolId = await findSchoolId(dependencies.fetch);
+    schoolId = await findSchoolId(fetcher);
   } catch (error) {
     throw new ProfessorEnrichmentUnavailableError(
       `Rate My Professors school lookup failed: ${errorMessage(error)}`,
@@ -208,7 +211,7 @@ export async function enrichCoursesWithRatings(
           teacherName,
           teacherKey,
           schoolId,
-          dependencies.fetch,
+          fetcher,
         );
         return { professor, teacherKey } as const;
       } catch (error) {
