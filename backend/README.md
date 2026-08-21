@@ -95,7 +95,7 @@ npm run ingest -- --term=FA26 --professors=auto
 | `never` | Publish only the catalog. |
 
 The job stages and atomically publishes a non-empty catalog before requesting professor ratings.
-Professor requests use the Rate My Professors GraphQL API with a 30-second timeout, at most three attempts for network, rate-limit, and server failures, and four concurrent requests.
+Professor requests use the Rate My Professors GraphQL API with a 30-second timeout, at most three attempts for network, rate-limit, and server failures, serialized requests, and longer exponential backoff after rate limits.
 Partial professor failures update successful ratings, preserve previously stored ratings for failed requests, emit workflow warnings, and record `succeeded_with_warnings`.
 If the school lookup fails or no professor request succeeds, the command exits unsuccessfully after recording the professor-phase failure; it does not roll back the published catalog or replace existing ratings.
 

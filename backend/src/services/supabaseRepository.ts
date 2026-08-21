@@ -15,7 +15,10 @@ import {
   isPrimaryInstructionType,
 } from "../ingestion/buildClassPlannerCatalog.js";
 import { SUBJECT_CODES } from "../ingestion/subjectCodes.js";
-import { normalizeTeacherKey } from "../utils/normalizeTeacherKey.js";
+import {
+  normalizeTeacherKey,
+  teacherNamesMatch,
+} from "../utils/normalizeTeacherKey.js";
 import { connectToDB } from "./connectToDB.js";
 
 type MeetingRow = ClassPlannerMeeting & {
@@ -194,6 +197,16 @@ function toRmpDocument(row: ProfessorRow): RMP {
   };
 }
 
+export function isExactProfessorMatch(professor: RMP): boolean {
+  return teacherNamesMatch(professor.name, professor.nameKey);
+}
+
+function toExactRmpDocuments(rows: readonly ProfessorRow[]): RMP[] {
+  return rows
+    .map(toRmpDocument)
+    .filter(isExactProfessorMatch);
+}
+
 function toTermDocument(row: TermRow): Term {
   return {
     Term: row.term,
@@ -346,7 +359,7 @@ async function searchProfessorRows(nameKeys: string[]) {
     return { data, error };
   });
 
-  return rows.map(toRmpDocument);
+  return toExactRmpDocuments(rows);
 }
 
 /** Atomically replaces a non-empty catalog without modifying professor rows. */
@@ -412,7 +425,7 @@ export async function replaceCatalog(
   }
 }
 
-/** Upserts successful professor ratings while leaving all other rows unchanged. */
+/** Upserts verified professor matches while preserving unmatched and failed rows. */
 export async function upsertProfessors(professors: readonly RMP[]) {
   const supabase = connectToDB();
 
@@ -533,7 +546,7 @@ export async function searchProfessor(nameKey?: string) {
       return { data, error };
     });
 
-    return rows.map(toRmpDocument);
+    return toExactRmpDocuments(rows);
   }
 
   const rows: ProfessorRow[] = [];
@@ -554,5 +567,5 @@ export async function searchProfessor(nameKey?: string) {
     offset += PAGE_SIZE;
   }
 
-  return rows.map(toRmpDocument);
+  return toExactRmpDocuments(rows);
 }

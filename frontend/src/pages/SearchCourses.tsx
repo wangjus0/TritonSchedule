@@ -109,7 +109,7 @@ function createApiRequestInit(signal: AbortSignal): RequestInit {
 }
 
 export default function SearchCourses() {
-  const SEARCH_RESULTS_CACHE_KEY = "searchCourseResultsCache:v2";
+  const SEARCH_RESULTS_CACHE_KEY = "searchCourseResultsCache:v4";
   const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get("q") ?? sessionStorage.getItem("searchCoursesQuery") ?? "";
   const [searchQuery, setSearchQuery] = useState(() =>
@@ -148,28 +148,6 @@ export default function SearchCourses() {
   const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false);
   const [selectedDiscussionIds, setSelectedDiscussionIds] = useState<Record<string, string>>({});
   const [selectedLabIds, setSelectedLabIds] = useState<Record<string, string>>({});
-  const [lastFetchedQuery, setLastFetchedQuery] = useState(() => {
-    const stored = sessionStorage.getItem(SEARCH_RESULTS_CACHE_KEY);
-    if (!stored) return "";
-
-    try {
-      const parsed = JSON.parse(stored) as { query?: string };
-      return typeof parsed.query === "string" ? parsed.query : "";
-    } catch {
-      return "";
-    }
-  });
-  const [lastFetchedTerm, setLastFetchedTerm] = useState(() => {
-    const stored = sessionStorage.getItem(SEARCH_RESULTS_CACHE_KEY);
-    if (!stored) return "";
-
-    try {
-      const parsed = JSON.parse(stored) as { term?: string };
-      return typeof parsed.term === "string" ? parsed.term : "";
-    } catch {
-      return "";
-    }
-  });
   const { events, addEvent } = useCalendar();
 
   useEffect(() => {
@@ -233,17 +211,6 @@ export default function SearchCourses() {
       return;
     }
 
-    const hasReusableCache =
-      query.toLowerCase() === lastFetchedQuery.trim().toLowerCase() &&
-      (lastFetchedTerm.trim() === normalizedTerm ||
-        lastFetchedTerm.trim().length === 0 ||
-        normalizedTerm.length === 0);
-
-    if (hasReusableCache) {
-      setIsBackendLoading(false);
-      return;
-    }
-
     const controller = new AbortController();
 
     const fetchCourses = async () => {
@@ -256,8 +223,6 @@ export default function SearchCourses() {
         setCoursesFromBackend(mappedCourses);
         const resolvedSearchState = mappedCourses.length > 0 ? "success" : "not_found";
         setSearchState(resolvedSearchState);
-        setLastFetchedQuery(query);
-        setLastFetchedTerm(normalizedTerm);
         sessionStorage.setItem(
           SEARCH_RESULTS_CACHE_KEY,
           JSON.stringify({
@@ -284,7 +249,7 @@ export default function SearchCourses() {
     return () => {
       controller.abort();
     };
-  }, [debouncedSearchQuery, activeTerm, lastFetchedQuery, lastFetchedTerm]);
+  }, [debouncedSearchQuery, activeTerm]);
 
   const displayedCourses = coursesFromBackend;
   const isDebouncingSearch =

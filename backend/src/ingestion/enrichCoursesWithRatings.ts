@@ -1,13 +1,18 @@
 import type { Course } from "../models/Course.js";
 import type { RMP } from "../models/RMP.js";
-import { normalizeTeacherKey } from "../utils/normalizeTeacherKey.js";
+import {
+  normalizeTeacherKey,
+  teacherNamesMatch,
+} from "../utils/normalizeTeacherKey.js";
 
 const RMP_API_URL = "https://www.ratemyprofessors.com/graphql";
 const SCHOOL_NAME = "University of California San Diego";
-const REQUEST_CONCURRENCY = 4;
+const REQUEST_CONCURRENCY = 1;
 const MAX_REQUEST_ATTEMPTS = 3;
 const REQUEST_TIMEOUT_MS = 30_000;
 const MAX_WARNING_DETAILS = 20;
+const RATE_LIMIT_RETRY_BASE_MS = 2_000;
+const TRANSIENT_RETRY_BASE_MS = 200;
 
 const RMP_HEADERS = {
   Accept: "application/json",
@@ -111,6 +116,7 @@ export type ProfessorEnrichmentCounts = Readonly<{
 export type CourseRatingEnrichment = Readonly<{
   courses: Course[];
   professors: RMP[];
+  unmatchedNameKeys: string[];
   counts: ProfessorEnrichmentCounts;
   warnings: string[];
 }>;
@@ -169,6 +175,7 @@ export async function enrichCoursesWithRatings(
     return {
       courses: courses.map((course) => ({ ...course })),
       professors: [],
+      unmatchedNameKeys: [],
       counts: emptyCounts(),
       warnings: [],
     };
@@ -198,6 +205,7 @@ export async function enrichCoursesWithRatings(
     },
   );
   const professors: RMP[] = [];
+  const unmatchedNameKeys: string[] = [];
   const warnings: string[] = [];
   let failed = 0;
   let successfulRequests = 0;
@@ -217,6 +225,7 @@ export async function enrichCoursesWithRatings(
       professors.push(result.professor);
     } else {
       unmatched += 1;
+      unmatchedNameKeys.push(result.teacherKey);
     }
   }
 
@@ -249,6 +258,7 @@ export async function enrichCoursesWithRatings(
       rmp: ratingsByNameKey.get(course.nameKey) ?? course.rmp,
     })),
     professors,
+    unmatchedNameKeys,
     counts,
     warnings,
   };
@@ -291,7 +301,11 @@ async function findProfessor(
     },
     fetcher,
   );
-  const node = data.search.teachers.edges[0]?.node;
+  const node = data.search.teachers.edges
+    .map(({ node: candidate }) => candidate)
+    .find((candidate) =>
+      teacherNamesMatch(`${candidate.firstName} ${candidate.lastName}`, teacherKey)
+    );
 
   if (!node) {
     return null;
@@ -334,7 +348,10 @@ async function fetchGraphql<T>(
         }
 
         lastError = error;
-        await waitBeforeRetry(attempt);
+        await waitBeforeRetry(
+          attempt,
+          response.status === 429 ? RATE_LIMIT_RETRY_BASE_MS : TRANSIENT_RETRY_BASE_MS,
+        );
         continue;
       }
 
@@ -353,7 +370,7 @@ async function fetchGraphql<T>(
       if (attempt === MAX_REQUEST_ATTEMPTS || !isRetryableNetworkError(error)) {
         throw error;
       }
-      await waitBeforeRetry(attempt);
+      await waitBeforeRetry(attempt, TRANSIENT_RETRY_BASE_MS);
     }
   }
 
@@ -365,8 +382,8 @@ function isRetryableNetworkError(error: unknown): boolean {
     (error instanceof DOMException && error.name === "TimeoutError");
 }
 
-async function waitBeforeRetry(attempt: number) {
-  const exponentialDelay = 200 * (2 ** (attempt - 1));
+async function waitBeforeRetry(attempt: number, baseDelayMs: number) {
+  const exponentialDelay = baseDelayMs * (2 ** (attempt - 1));
   const jitter = Math.floor(Math.random() * 100);
   await new Promise((resolve) => setTimeout(resolve, exponentialDelay + jitter));
 }
