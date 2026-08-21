@@ -109,4 +109,5 @@ The app is exported separately from `src/server.ts` so serverless deployment doe
 
 The GitHub Actions workflow in [`.github/workflows/nightly-ingestion.yml`](../.github/workflows/nightly-ingestion.yml) runs catalog ingestion outside the Vercel request lifecycle.
 It runs nightly at 3:17 AM in `America/Chicago` and also supports manual term and professor-mode inputs.
+Manual dispatches preselect `always` so an operator-requested run refreshes professor ratings by default, while scheduled runs continue using `auto`.
 Configure `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` as repository Actions secrets before enabling or dispatching it.

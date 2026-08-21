@@ -205,7 +205,7 @@ export function isExactProfessorMatch(professor: RMP): boolean {
 function toExactRmpDocuments(rows: readonly ProfessorRow[]): RMP[] {
   return rows
     .map(toRmpDocument)
-    .filter(isExactProfessorMatch);
+    .filter((professor) => professor.avgRating > 0 && isExactProfessorMatch(professor));
 }
 
 function toTermDocument(row: TermRow): Term {
